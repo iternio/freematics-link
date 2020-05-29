@@ -1,0 +1,3 @@
+[submodule "lib/Freematics"]
+	path = lib/Freematics
+	url = git@github.com:stanleyhuangyc/Freematics.git
