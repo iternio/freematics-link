@@ -14,6 +14,8 @@
         "streambuf": "cpp",
         "system_error": "cpp",
         "tuple": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "iomanip": "cpp",
+        "limits": "cpp"
     }
 }

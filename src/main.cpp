@@ -4,17 +4,18 @@
 #ifdef BOARD_HAS_PSRAM
 #include <esp_himem.h>
 #endif
+#include "httpclientwrapper.h"
 
 // #include "mems.h"
 // #include "abrpwifi.h"
 // #include "util.h"
 #include "abrp.h"
-#include "config.h"
+// #include "config.h"
 
-#define WIFI_SSID "------"
-#define WIFI_PASSWORD "------"
+#define WIFI_SSID "-----"
+#define WIFI_PASSWORD "-----"
 
-#define LOOP_TIME 1000
+#define LOOP_TIME 10000
 
 FreematicsESP32 sys;
 
@@ -64,12 +65,45 @@ void printSysInfo(const FreematicsESP32 &sys)
 
 void startWiFi() {
     log_v("Connecting to " WIFI_SSID);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
-        log_v("Waiting");
-        delay(1000);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+        for (int i = 0; i < 15 && WiFi.status() != WL_CONNECTED; i ++) {
+            log_v("Waiting");
+            delay(1000);
+        }
     }
     log_v("Connected");
+}
+
+HTTP::Client ABRPclient;
+
+void connectABRP() {
+    ABRPclient.begin(
+        "https://" ABRP_SERVER_HOST ABRP_SERVER_ENDPOINT "?"
+            ABRP_SERVER_TOKENVAR "=" ABRP_SERVER_TOKEN,
+        ABRP_SERVER_CACERT);
+}
+
+void sendABRP(const String &tlm) {
+    String payload =
+        "--ABR1234PABRP1234ABRP\n"
+        "Content-Disposition: form-data; name=\"tlm\"\n\n"
+        + tlm + "\n"
+        "--ABR1234PABRP1234ABRP--";
+    ABRPclient.addHeader(ABRP_SERVER_AUTHHEADER, ABRP_SERVER_AUTHTEXT ABRP_SERVER_APIKEY);
+    ABRPclient.addHeader("Content-Type", "multipart/form-data; boundary=\"ABR1234PABRP1234ABRP\"");
+    ABRPclient.post(payload);
+    log_v("%s", "Sent");
+    WiFiClient stream = ABRPclient.getStream();
+    while (stream.available()) {
+        char ch = static_cast<char>(stream.read());
+        Serial.print(ch);
+    }
+    Serial.println();
+    log_v("%s", "Done");
+    Serial.println();
+    Serial.println();
+    Serial.println();
 }
 
 ABRPTelemetry telem;
@@ -86,6 +120,7 @@ void setup()
         printSysInfo(sys);
     }
     startWiFi();
+    connectABRP();
     telem.utc = 1591385576l + millis() / 1000l;
     telem.soc = randfloat(0, 100, 1);
     telem.speed = randfloat(0, 160, 1);
@@ -93,7 +128,8 @@ void setup()
     telem.lon = randfloat(-180, 180, 7);
     telem.is_charging = false;
     telem.soh = randfloat(0, 100, 1);
-    Serial.println(telem.toJSON());
+    sendABRP(telem.toJSON());
+    // Serial.println(telem.toJSON());
 }
 
 void loop()
@@ -104,7 +140,8 @@ void loop()
     telem.speed = round(telem.speed() + randfloat(-5, 5, 0.1), 0.1);
     telem.lat = round(telem.lat() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
     telem.lon = round(telem.lon() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    Serial.println(telem.toJSON());
+    sendABRP(telem.toJSON());
+    // Serial.println(telem.toJSON());
 
 #ifdef VERBOSE
     blink(100);

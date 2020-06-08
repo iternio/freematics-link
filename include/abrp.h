@@ -15,8 +15,13 @@
 #define ABRP_SERVER_TELEMVAR "tlm"
 
 //TODO: Make these not configurable variables rather than #define's
-#define ABRP_SERVER_APIKEY "------"
-#define ABRP_SERVER_TOKEN "------"
+#define ABRP_SERVER_APIKEY "-----"
+#define ABRP_SERVER_TOKEN "-----"
+
+#define ABRP_SERVER_CACERT \
+    "-----BEGIN CERTIFICATE-----\n" \
+
+    "-----END CERTIFICATE-----"
 
 template <typename T>
 struct ABRPTelemetryValue {
@@ -95,20 +100,20 @@ public:
     }
 };
 
-class ABRP {
-public:
-    // virtual bool start() = 0;
-    // virtual bool connect() = 0;
-    // virtual bool disconnect() = 0;
-    // virtual bool end() = 0;
-    bool send(ABRPTelemetry &telem);
-protected:
-    // virtual int write() = 0;
-    // virtual int read() = 0;
-    // virtual bool started() = 0;
-    // virtual bool connected() = 0;
+// class ABRP {
+// public:
+//     // virtual bool start() = 0;
+//     // virtual bool connect() = 0;
+//     // virtual bool disconnect() = 0;
+//     // virtual bool end() = 0;
+//     bool send(ABRPTelemetry &telem);
+// protected:
+//     // virtual int write() = 0;
+//     // virtual int read() = 0;
+//     // virtual bool started() = 0;
+//     // virtual bool connected() = 0;
 
-};
+// };
 
 // class ABRPWiFi : public ABRP {
 // public:
