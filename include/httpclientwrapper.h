@@ -10,9 +10,9 @@
 #include <Arduino.h>
 #include <WiFiClient.h>
 
-namespace HTTP {
+namespace MyHTTP {
 
-class Client {
+class MyClient {
 public:
     bool begin(String url, const char* CAcert);
     void addHeader(const String& name, const String& value, bool first = false, bool replace = true);

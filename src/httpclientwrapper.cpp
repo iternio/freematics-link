@@ -10,31 +10,31 @@
 #include <HTTPClient.h>
 #include <WiFiClient.h>
 
-namespace HTTP {
+namespace MyHTTP {
 
 ::HTTPClient client;
 
-bool Client::begin(String url, const char* CAcert) {
+bool MyClient::begin(String url, const char* CAcert) {
     return client.begin(url, CAcert);
 }
 
-void Client::addHeader(const String& name, const String& value, bool first, bool replace) {
+void MyClient::addHeader(const String& name, const String& value, bool first, bool replace) {
     client.addHeader(name, value, first, replace);
 }
 
-int Client::get() {
+int MyClient::get() {
     return client.GET();
 }
 
-int Client::post(uint8_t * payload, size_t size) {
+int MyClient::post(uint8_t * payload, size_t size) {
     return client.POST(payload, size);
 }
 
-int Client::post(String payload) {
+int MyClient::post(String payload) {
     return client.POST(payload);
 }
 
-WiFiClient& Client::getStream() {
+WiFiClient& MyClient::getStream() {
     return client.getStream();
 }
 

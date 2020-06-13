@@ -66,16 +66,21 @@ void printSysInfo(const FreematicsESP32 &sys)
 void startWiFi() {
     log_v("Connecting to " WIFI_SSID);
     while (WiFi.status() != WL_CONNECTED) {
+        log_v("Trying to connect");
         WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-        for (int i = 0; i < 15 && WiFi.status() != WL_CONNECTED; i ++) {
-            log_v("Waiting");
-            delay(1000);
+        for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED && WiFi.status() != WL_CONNECT_FAILED; i ++) {
+            log_v("Waiting (%u)", WiFi.status());
+            delay(500);
+        }
+        if (WiFi.status() == WL_CONNECT_FAILED) {
+            log_v("Failed to connect");
+            delay(2000);
         }
     }
     log_v("Connected");
 }
 
-HTTP::Client ABRPclient;
+MyHTTP::MyClient ABRPclient;
 
 void connectABRP() {
     ABRPclient.begin(
@@ -120,27 +125,33 @@ void setup()
         printSysInfo(sys);
     }
     startWiFi();
-    connectABRP();
-    telem.utc = 1591385576l + millis() / 1000l;
-    telem.soc = randfloat(0, 100, 1);
-    telem.speed = randfloat(0, 160, 1);
-    telem.lat = randfloat(-90, 90, 7);
-    telem.lon = randfloat(-180, 180, 7);
-    telem.is_charging = false;
-    telem.soh = randfloat(0, 100, 1);
-    sendABRP(telem.toJSON());
+    // connectABRP();
+    // telem.utc = 1591385576l + millis() / 1000l;
+    // telem.soc = randfloat(0, 100, 1);
+    // telem.speed = randfloat(0, 160, 1);
+    // telem.lat = randfloat(-90, 90, 7);
+    // telem.lon = randfloat(-180, 180, 7);
+    // telem.is_charging = false;
+    // telem.soh = randfloat(0, 100, 1);
+    // sendABRP(telem.toJSON());
     // Serial.println(telem.toJSON());
+
+    abrp::clients::HTTP c;
+    WiFiClient w;
+    c.configure(w, "https://api.iternio.com:456/1/tlm/send?token=1234-125-r23r2-325&tlm={\"hi\":1234,\"bye\":\"239=\"}");
+    log_v("Set Up Complete");
 }
 
 void loop()
 {
+    log_v("Loop");
     unsigned long t = millis();
-    telem.utc = 1591385576l + millis() / 1000l;
-    telem.soc = round(telem.soc() + randfloat(-0.5, 0.5, 0.1), 0.1);
-    telem.speed = round(telem.speed() + randfloat(-5, 5, 0.1), 0.1);
-    telem.lat = round(telem.lat() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    telem.lon = round(telem.lon() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    sendABRP(telem.toJSON());
+    // telem.utc = 1591385576l + millis() / 1000l;
+    // telem.soc = round(telem.soc() + randfloat(-0.5, 0.5, 0.1), 0.1);
+    // telem.speed = round(telem.speed() + randfloat(-5, 5, 0.1), 0.1);
+    // telem.lat = round(telem.lat() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
+    // telem.lon = round(telem.lon() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
+    // sendABRP(telem.toJSON());
     // Serial.println(telem.toJSON());
 
 #ifdef VERBOSE

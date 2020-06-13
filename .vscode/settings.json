@@ -16,6 +16,7 @@
         "tuple": "cpp",
         "cmath": "cpp",
         "iomanip": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "iostream": "cpp"
     }
 }
