@@ -8,7 +8,7 @@ namespace abrp {
 
     namespace params {
 
-        const char* PROTOCOL = "https://";
+        const char* PROTOCOL = "http://";
         const char* HOST = "api.iternio.com";
         const char* SEND_ENDPOINT = "/1/tlm/send";
 
@@ -17,7 +17,7 @@ namespace abrp {
 
         const char* VAR_AUTH = "api_key";
         const char* VAR_TOKEN = "token";
-        const char* var_TELEM = "tlm";
+        const char* VAR_TELEM = "tlm";
 
         const char* CA_CERT =
             "-----BEGIN CERTIFICATE-----\n"

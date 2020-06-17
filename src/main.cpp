@@ -23,7 +23,7 @@
 FreematicsESP32 sys;
 
 float randfloat(float min, float max, float dec = 1) {
-    return random((int)((max - min) / dec) + 1) * dec + min;
+    return random((long)(min / dec), (long)(max / dec + 1)) * dec;
 }
 
 float round(float val, float dec = 1) {
@@ -87,7 +87,7 @@ void printSysInfo(const FreematicsESP32 &sys)
     int rtc = rtc_clk_slow_freq_get();
     if (rtc)
         log_i("RTC: %i", rtc);
-    log_i("Firmware: R%i\n\n", sys.version);
+    log_i("Firmware: R%i", sys.version);
 }
 
 void startWiFi() {
@@ -104,7 +104,7 @@ void startWiFi() {
             delay(2000);
         }
     }
-    log_v("Connected\n\n");
+    log_v("Connected");
 }
 
 void time_sync_notification_cb(struct timeval *tv)
@@ -133,7 +133,7 @@ void setTime() {
     time(&now);
     nowtm = gmtime(&now);
     strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
-    log_v("System time updated to: %s\n\n", buf);
+    log_v("System time updated to: %s", buf);
 }
 
 // MyHTTP::MyClient ABRPclient;
@@ -173,25 +173,28 @@ WiFiClient w;
 
 void setup()
 {
-    log_v("Boot complete\n\n");
-    // sys.buzzer(2000);
-    // delay(200);
-    // sys.buzzer(0);
-    beep(880, 100);
+    log_v("Boot complete");
+    beep(880, 50);
     delay(200);
 
     log_v("Beginning set up");
     Serial.begin(115200);
     blink(25);
-    if (sys.begin()) {
-        delay(300);
-        blink(25, 3);
-        printSysInfo(sys);
+    if (!sys.begin()) {
+        log_e("Failed to initialize system!");
+        return;
     }
+    delay(300);
+    blink(25, 3);
+
+    printSysInfo(sys);
+    Serial.println();
 
     startWiFi();
+    Serial.println();
 
     setTime();
+    Serial.println();
 
     char url[50], authkey[50];
     strcpy(url, abrp::params::PROTOCOL);
@@ -203,42 +206,49 @@ void setup()
     c.urlParams.set(abrp::params::VAR_TOKEN, config::TOKEN);
     c.reqHeaders.set(abrp::params::HEADER_AUTH, authkey);
 
-    // connectABRP();
-    telem.utc = 1591385576l + millis() / 1000l;
+    telem.utc = time(nullptr);
     telem.soc = randfloat(0, 100, 1);
     telem.speed = randfloat(0, 160, 1);
-    telem.lat = randfloat(-90, 90, 7);
-    telem.lon = randfloat(-180, 180, 7);
+    telem.lat = randfloat(-90, 90, 0.001);
+    telem.lon = randfloat(-180, 180, 0.001);
     telem.is_charging = false;
     telem.soh = randfloat(0, 100, 1);
-    // sendABRP(telem.toJSON());
-    Serial.println(telem.toJSON());
+    log_v("Starting telem: %s", telem.toJSON().c_str());
 
-    c.urlParams.set(abrp::params::VAR_TELEM, telem.toJSON());
-    c.get();
+    // c.urlParams.set(abrp::params::VAR_TELEM, telem.toJSON());
+    // c.get();
 
-    log_v("Set Up Complete\n\n\n");
-    beep(880, 100, 2);
+    log_v("Set Up Complete");
+    beep(880, 50, 2);
 }
+
+String telemstr;
 
 void loop()
 {
-    log_v("Loop");
+    Serial.println();
+    // log_v("Main Loop");
     unsigned long t = millis();
-    telem.utc = 1591385576l + millis() / 1000l;
-    telem.soc = round(telem.soc() + randfloat(-0.5, 0.5, 0.1), 0.1);
-    telem.speed = round(telem.speed() + randfloat(-5, 5, 0.1), 0.1);
-    telem.lat = round(telem.lat() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    telem.lon = round(telem.lon() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    // sendABRP(telem.toJSON());
-    Serial.println(telem.toJSON());
-
-    c.urlParams.set(abrp::params::VAR_TELEM, telem.toJSON());
-    c.get();
 
 #ifdef VERBOSE
     blink(100);
 #endif
+
+    telem.utc = time(nullptr);
+    telem.soc = round(telem.soc() + randfloat(-0.5, 0.5, 0.1), 0.1);
+    telem.speed = round(telem.speed() + randfloat(-5, 5, 0.1), 0.1);
+    telem.lat = round(telem.lat() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
+    telem.lon = round(telem.lon() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
+    telemstr = telem.toJSON();
+    log_v("Telem: %s", telemstr.c_str());
+
+    c.urlParams.set(abrp::params::VAR_TELEM, telemstr);
+
+#ifdef VERBOSE
+    if (!c.get())
+        beep(3000, 10, 3);
+#endif
+
     if (millis() - t < config::LOOP_TIME)
         delay(config::LOOP_TIME - (millis() - t));
 }

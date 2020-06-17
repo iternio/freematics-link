@@ -12,6 +12,7 @@ namespace abrp {
     namespace clients {
 
         enum HttpCode {
+            HTTP_CODE_NONE = 0,
             HTTP_CODE_CONTINUE = 100,
             HTTP_CODE_SWITCHING_PROTOCOLS = 101,
             HTTP_CODE_PROCESSING = 102,
@@ -97,23 +98,26 @@ namespace abrp {
             String value = "";
         };
 
-        String urlEcnode(const String& str);
+        unsigned short urlEncode(char* dst, char* src);
 
         class Parameters {
         public:
             Parameters(const String& p);
             bool add(const String& key, const String& value);
+            bool add(const String& keyvalue);
             bool set(const String& key, const String& value);
+            bool set(const String& keyvalue);
             bool remove(const String& key);
             String get(const String& key);
             bool has(const String& key);
         private:
-            unsigned short find(const String& key);
-            Parameter params[15];   //TODO: Is 15 enough?
-            unsigned short count = 0;
+            short find(const String& key);
+            Parameter params[20];   //TODO: Is 15 enough?
+            short count = 0;
             const String purpose;
             //TODO: Any sort of management of headers that can't be duplicated?
 
+            static const short MAX_COUNT = 20;
             friend class HTTP;
         };
 
@@ -124,12 +128,26 @@ namespace abrp {
             String headers;
             String body;
             String raw;
-            unsigned short size;
+            unsigned int size;
+            void virtual clear() {
+                http = "";
+                method = "";
+                url = "";
+                headers = "";
+                body = "";
+                raw = "";
+                size = 0;
+            }
         };
 
         struct Response : public Request {
-            int code;
+            HttpCode code;
             String codetext;
+            void virtual clear() {
+                Request::clear();
+                code = HTTP_CODE_NONE;
+                codetext = "";
+            }
         };
 
         class HTTP {
@@ -160,13 +178,13 @@ namespace abrp {
             Response response;
 
         protected:
-            virtual void connectStream();
-            virtual void disconnectStream();
+            virtual bool send(unsigned char* req, unsigned int size);
+            virtual unsigned int receive();
+            virtual bool parse(char c = 0);
+            virtual bool parseBody(char c = 0);
 
-            virtual bool send();
-
-            virtual void writeStream();
-            virtual void readStream();
+            virtual bool connect();
+            virtual void disconnect();
 
             Client* client = nullptr;
 
