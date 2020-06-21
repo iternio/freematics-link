@@ -1,5 +1,5 @@
 /*
- * ABRP API & Serverparameters
+ * ABRP API & Server parameters
  */
 
 #pragma once
