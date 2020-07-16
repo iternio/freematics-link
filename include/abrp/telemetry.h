@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <string.h>
+// #include <string.h>
 #include <ArduinoJson.h>    //TODO: Do we need this? we use very little of it
 
 namespace abrp {
@@ -52,6 +52,8 @@ namespace abrp {
 
             String toJSON() {
                 String ret;
+                //TODO: temporarily commenting this out to resovle build issues
+                // ret = "{}";
                 StaticJsonDocument<JSON_OBJECT_SIZE(16)> doc;
                 //Mandatory fields
                 if (!utc.exists() || !soc.exists() || !speed.exists() || !lat.exists() || !lon.exists() || !is_charging.exists())

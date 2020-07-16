@@ -4,7 +4,7 @@
 
 #pragma once
 
-namespace config {
+namespace configs {
 
     const short LOOP_TIME = 10000;  //How often to repeat main loop, ms
 

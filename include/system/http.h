@@ -4,12 +4,11 @@
 
 #pragma once
 
-#include <string.h>
+// #include <string.h>
 #include <client.h>
 
-namespace abrp {
-
-    namespace clients {
+namespace sys {
+    namespace clt {
 
         enum HttpCode {
             HTTP_CODE_NONE = 0,
@@ -155,8 +154,9 @@ namespace abrp {
             HTTP();
             virtual ~HTTP();
 
-            virtual bool configure(Client& client, const String& url);
-            virtual bool configure(Client& client, const String& host, unsigned short port, const String& endpoint, bool https);
+            virtual bool configure(Client& clt);
+            virtual bool configure(Client& clt, const String& url);
+            virtual bool configure(Client& clt, const String& host, unsigned short port, const String& endpoint, bool https);
             virtual bool done();
 
             virtual bool connected();
@@ -164,6 +164,8 @@ namespace abrp {
             virtual bool get();
             virtual bool post();
 
+            virtual bool setUrl(const String& url);
+            virtual bool setUrl(const String& hst, unsigned short prt, const String& endp, bool s);
             virtual void setReuse(const bool ru);
             virtual void setUserAgent(const String& ua);
             virtual void setPostFormat(const PostParameterFormat form);
@@ -193,10 +195,10 @@ namespace abrp {
             String agent = "freematics-link/0.1 (Freematics One+ Model B)";
             PostParameterFormat postFormat = POST_FORMAT_URL_ENCODED;
 
-            bool https;
-            String host;
-            unsigned short port;
-            String endpoint;
+            bool https = false;
+            String host = "";
+            unsigned short port = 80;
+            String endpoint = "/";
 
         };
 

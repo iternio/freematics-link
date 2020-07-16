@@ -2,13 +2,12 @@
  * Generic HTTP(S) client
  */
 
-#include "abrp/http.h"
+#include "system/http.h"
 
 #include <FreematicsPlus.h>
 
-namespace abrp {
-
-    namespace clients {
+namespace sys {
+    namespace clt {
 
         unsigned short urlEncode(char* dst, char* src) {
             // log_v("\n\n");
@@ -127,73 +126,18 @@ namespace abrp {
             done();
         }
 
-        bool HTTP::configure(Client &clt, const String &url) {
-            log_v("Parsing url %s", url.c_str());
+        bool HTTP::configure(Client& clt) {
+            client = &clt;
+            return true;
+        }
 
-            short sep, colon, slash, qmark, amp, equal;
-            bool https;
-            String host, endpoint;
-            unsigned short port;
-
-            //Find protocol
-            https = url.startsWith("https");
-
-            //Separate host:port and endpoint
-            sep = url.indexOf("://");
-            sep = (sep < 0 ? 0 : sep + 3);
-            slash = url.indexOf("/", sep);
-
-            //Parse host
-            if (slash < 0)
-                host = url.substring(sep);
-            else
-                host = url.substring(sep, slash);
-
-            //Parse port
-            colon = host.indexOf(":");
-            if (colon < 0)
-                port = (https ? 443 : 80);
-            else {
-                port = host.substring(colon + 1).toInt();
-                host.remove(colon);
-            }
-
-            //Parse endpoint
-            if (slash < 0) {
-                endpoint = "/";
-                qmark = -1;
-            } else {
-                qmark = url.indexOf("?");
-                if (qmark < 0)
-                    endpoint = url.substring(slash);
-                else
-                    endpoint = url.substring(slash, qmark);
-            }
-
-            //Configure client
-            bool ret = configure(clt, host, port, endpoint, https);
-
-            //Parse url parameters
-            while (qmark >= 0) {
-                qmark ++;
-                equal = url.indexOf("=", qmark);
-                amp = url.indexOf("&", qmark);
-                // log_v("%d %d %d", qmark, equal, amp);
-                urlParams.add(url.substring(qmark, equal), (amp < 0 ? url.substring(equal + 1) : url.substring(equal + 1, amp)));
-                qmark = amp;
-            }
-
-            return ret;
+        bool HTTP::configure(Client& clt, const String &url) {
+            return configure(clt) && setUrl(url);
         }
 
         bool HTTP::configure(Client &clt, const String& hst, unsigned short prt, const String& endp, bool s) {
             log_v("Protocol: http%s Host: %s Port: %u Endpoint: %s", s ? "s" : "", hst.c_str(), prt, endp.c_str());
-            client = &clt;
-            https = s;
-            host = hst;
-            port = prt;
-            endpoint = endp;
-            return true;
+            return configure(clt) && setUrl(hst, prt, endp, s);
         }
 
         bool HTTP::done() {
@@ -361,7 +305,7 @@ namespace abrp {
             case 1: //Chunked body - reading size
                 if (c >= '0' && c <= '9')
                     len = len * 10 + (c - '0');
-                if (c == '\r');
+                if (c == '\r')
                     mode = 2;
                 return true;
             case 2:
@@ -391,6 +335,73 @@ namespace abrp {
                 return true;
             }
             return false;
+        }
+
+        bool HTTP::setUrl(const String& url) {
+            log_v("Parsing url %s", url.c_str());
+
+            short sep, colon, slash, qmark, amp, equal;
+            bool https;
+            String host, endpoint;
+            unsigned short port;
+
+            //Find protocol
+            https = url.startsWith("https");
+
+            //Separate host:port and endpoint
+            sep = url.indexOf("://");
+            sep = (sep < 0 ? 0 : sep + 3);
+            slash = url.indexOf("/", sep);
+
+            //Parse host
+            if (slash < 0)
+                host = url.substring(sep);
+            else
+                host = url.substring(sep, slash);
+
+            //Parse port
+            colon = host.indexOf(":");
+            if (colon < 0)
+                port = (https ? 443 : 80);
+            else {
+                port = host.substring(colon + 1).toInt();
+                host.remove(colon);
+            }
+
+            //Parse endpoint
+            if (slash < 0) {
+                endpoint = "/";
+                qmark = -1;
+            } else {
+                qmark = url.indexOf("?");
+                if (qmark < 0)
+                    endpoint = url.substring(slash);
+                else
+                    endpoint = url.substring(slash, qmark);
+            }
+
+            //Set components of url
+            bool ret = setUrl(host, port, endpoint, https);
+
+            //Parse url parameters
+            while (qmark >= 0) {
+                qmark ++;
+                equal = url.indexOf("=", qmark);
+                amp = url.indexOf("&", qmark);
+                // log_v("%d %d %d", qmark, equal, amp);
+                urlParams.add(url.substring(qmark, equal), (amp < 0 ? url.substring(equal + 1) : url.substring(equal + 1, amp)));
+                qmark = amp;
+            }
+
+            return ret;
+        }
+
+        bool HTTP::setUrl(const String& hst, unsigned short prt, const String& endp, bool s) {
+            https = s;
+            host = hst;
+            port = prt;
+            endpoint = endp;
+            return true;
         }
 
         void HTTP::setReuse(const bool ru) {
@@ -521,5 +532,4 @@ namespace abrp {
         }
 
     }
-
 }
