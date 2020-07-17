@@ -63,17 +63,39 @@ namespace util {
             cinfo.features & CHIP_FEATURE_BLE ? 'Y' : 'N',
             cinfo.features & CHIP_FEATURE_BT ? 'Y' : 'N');
         log_i("CPU: %u MHz", ESP.getCpuFreqMHz());
-        log_i("Flash: %u B", ESP.getFlashChipSize());
-        // log_i("Flash: %u B", spi_flash_get_chip_size());
-    #ifdef BOARD_HAS_PSRAM
-        log_i("IRAM: %u B", ESP.getHeapSize());
-        log_i("PSRAM: %u B", ESP.getPsramSize() + esp_himem_get_phys_size());
-    #endif
         //TODO: I'm pretty sure this board is supposed to have an RTC, figure this out
         int rtc = rtc_clk_slow_freq_get();
         if (rtc)
             log_i("RTC: %i", rtc);
         log_i("Firmware: R%i", sys.version);
+        log_i("Flash: %u B", ESP.getFlashChipSize());
+        log_i("Flash (SPI): %u B", spi_flash_get_chip_size());
+        log_i("IRAM: %u B", ESP.getHeapSize());
+    #ifdef BOARD_HAS_PSRAM
+        log_i("PSRAM: %u B", ESP.getPsramSize() + esp_himem_get_phys_size());
+        log_i("SPIRAM: %u B", ESP.getPsramSize());
+        log_i("HiMem Phys Size: %u B", esp_himem_get_phys_size());
+        log_i("HiMem Reserved: %u B", esp_himem_reserved_area_size());
+    #endif
+        // log_i("Heap info:");
+        // heap_caps_print_heap_info(MALLOC_CAP_EXEC);
+        // heap_caps_print_heap_info(MALLOC_CAP_32BIT);
+        // heap_caps_print_heap_info(MALLOC_CAP_8BIT);
+        // heap_caps_print_heap_info(MALLOC_CAP_DMA);
+        // heap_caps_print_heap_info(MALLOC_CAP_PID2);
+        // heap_caps_print_heap_info(MALLOC_CAP_PID3);
+        // heap_caps_print_heap_info(MALLOC_CAP_PID4);
+        // heap_caps_print_heap_info(MALLOC_CAP_PID5);
+        // heap_caps_print_heap_info(MALLOC_CAP_PID6);
+        // heap_caps_print_heap_info(MALLOC_CAP_PID7);
+        // heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
+        // heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+        // heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
+        // heap_caps_print_heap_info(MALLOC_CAP_INVALID);
+        // heap_caps_dump_all();
+        char buffer[1024];
+        vTaskList(buffer);
+        log_i("Task Info:\nTask Name\tStatus\tPrio\tHWM\tTask\tAffinity\n%s", buffer);
     }
 
 }

@@ -1,6 +1,4 @@
-// #include "freematics.h"
 #include <FreematicsPlus.h>
-// #include <ArduinoJson.h>
 #ifdef BOARD_HAS_PSRAM
 #ifdef CONFIG_USING_ESPIDF
 #include <esp32/himem.h>
@@ -9,25 +7,23 @@
 #endif
 #endif
 #include <lwip/apps/sntp.h>
-//#include <string.h>
 
 #include "abrp.h"
 #include "configs.h"
 #include "system.h"
 #include "util.h"
 
-String test = "blah";
-
-// namespace abrp {
-
 using namespace util;
 
-// void startWiFi();
+//System initialization
+bool initializeSystem(::FreematicsESP32& system);
 
-// void doSetup(); //TODO: This is a temporary function as I build out the full capabilities
-// void doLoop();  //TODO: This is a temporary function as I build out the full capabilities
+//Task functions
+void taskInitialize(void* taskToNotify);
+void taskReadTelemetry(void* taskToNotify);
+void taskSendTelemetry(void* taskToNotify);
 
-bool initializeSystem(::FreematicsESP32& system);   //TODO: Move to library
+//Helper functions (most likely to move to libraries)
 void setTime(); //TODO: Move to library
 void connectObd() {};   //TODO: Move to a library
 abrp::telemetry::Telemetry getTelemetry();    //TODO: Pass in OBD connection
@@ -35,33 +31,33 @@ bool isDriving(abrp::telemetry::Telemetry& telem) { return true; }; //TODO: Move
 bool isCharging(abrp::telemetry::Telemetry& telem) { return false; }; //TODO: Move to library
 bool sendTelemetry(sys::clt::HTTP& client, abrp::telemetry::Telemetry& telem);  //TODO: Move to library
 
-// FreematicsESP32 sys;
-// abrp::telemetry::Telemetry telem;
-// abrp::clients::HTTP c;
-// WiFiClient w;
+char taskbuffer[1024];
 
-// void setup() {
-//     doSetup();
-// }
+#if ABRP_VERBOSE
+void printTaskList() {
+    vTaskList(taskbuffer);
+    log_i("Task Info:\nTask Name\tStatus\tPrio\tHWM\tTask\tAffinity\n%s", taskbuffer);
+}
+#else
+#define printTaskList()
+#endif
 
-// void loop() {
-//     doLoop();
-// }
 
 //TODO: move away from Arduino style and just write a main, can avoid globals!
-::FreematicsESP32 syst;
+::FreematicsESP32 freematics;
 sys::clt::HTTP* client;
-abrp::telemetry::Telemetry telem;
+// abrp::telemetry::Telemetry telem;
 
 void app() {
-// void setup() {
     Serial.begin(115200);
     beep(880, 50);
-    log_v("System boot");
+    log_v("System boot complete");
+    printTaskList();
+    Serial.println();
 
     log_v("Initializing system");
-    // ::FreematicsESP32 system;
-    initializeSystem(syst);
+    // ::FreematicsESP32 freematics;
+    initializeSystem(freematics);
     log_v("Initialization complete");
 
     log_v("Getting network connection");
@@ -71,34 +67,86 @@ void app() {
     log_v("Setting system time");
     setTime();
 
-    log_v("Getting OBD connection");
-    connectObd();   //TODO: Actually return an OBD connection
     beep(880, 50, 2);
 
-    log_v("Beginning main loop");
-    // abrp::telemetry::Telemetry telem;
-// }
-// void loop() {
-    unsigned long t;
-    while(true) {
-        t = millis();
-        Serial.println();
-#ifdef VERBOSE
-        blink(100);
-#endif
-        telem = getTelemetry();  //TODO: Pass in OBD connection
-        if (isDriving(telem) || isCharging(telem)) {
-            if (!sendTelemetry(*client, telem)) {
-#ifdef VERBOSE
-                beep(3000, 10, 3);
-#endif
-            }
-        }
+    log_v("Setting up telemetry reader task");
+    QueueHandle_t telemQ = xQueueCreate(1, sizeof(abrp::telemetry::Telemetry));
+    TaskHandle_t readTask, sendTask;
+    xTaskCreate(taskReadTelemetry, "reader", 8192, telemQ, 10, &readTask);
+    xTaskCreate(taskSendTelemetry, "sender", 8192, telemQ, 15, &sendTask);
 
-        if (millis() - t < configs::LOOP_TIME)
-            delay(configs::LOOP_TIME - (millis() - t));
+    printTaskList();
+    log_v("Beginning main loop");
+
+    while(true) {
+        delay(30000);
+        printTaskList();
     }
 }
+
+void taskReadTelemetry(void* telemetryQ) {
+    log_v("Getting OBD connection");
+    connectObd();   //TODO: Actually return an OBD connection
+    abrp::telemetry::Telemetry telem;
+    TickType_t last = xTaskGetTickCount();
+    const TickType_t rate = pdMS_TO_TICKS(configs::RATE_OBD_READ);
+    while (true) {
+        telem = getTelemetry();  //TODO: Pass in OBD connection
+        if (isDriving(telem) || isCharging(telem)) {
+            log_v("Telemetry ready");
+            xQueueOverwrite(telemetryQ, &telem);
+        }
+        log_d("Telem task sleeping");
+        vTaskDelayUntil(&last, rate);
+        log_d("Telem task running");
+    }
+}
+
+void taskSendTelemetry(void* telemetryQ) {
+    abrp::telemetry::Telemetry telem;
+    TickType_t last = xTaskGetTickCount();
+    const TickType_t rate = pdMS_TO_TICKS(configs::RATE_TELEM_SEND);
+    while (true) {
+        log_d("Send task waiting for data");
+        if (xQueueReceive(telemetryQ, &telem, pdMS_TO_TICKS(configs::RATE_TELEM_SEND)) &&
+            Serial.println() &&
+            sendTelemetry(*client, telem)) {
+            log_v("Telemetry sent");
+            Serial.println();
+        } else {
+            log_v("Failed to send telemetry");
+#if ABRP_VERBOSE>1
+            beep(3000, 10, 3);
+#endif
+        }
+        log_d("Send task sleeping");
+        vTaskDelayUntil(&last, rate);
+        log_d("Send task running");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 bool initializeSystem(::FreematicsESP32& system) {
     //TODO: Move this to a library?
@@ -111,7 +159,9 @@ bool initializeSystem(::FreematicsESP32& system) {
         log_e("Freematics system failed to initialize");
         return false;
     }
+    printTaskList();
     printSysInfo(system);
+    printTaskList();
     return true;
 }
 
@@ -160,103 +210,6 @@ bool sendTelemetry(sys::clt::HTTP& client, abrp::telemetry::Telemetry& telem) {
     return client.get();
 }
 
-// void doSetup() {
-    // log_v("Boot complete");
-    // beep(880, 50);
-    // delay(200);
-
-    // log_v("Beginning set up");
-    // Serial.begin(115200);
-    // blink(25);
-    // if (!sys.begin()) {
-    //     log_e("Failed to initialize system!");
-    //     return;
-    // }
-    // delay(300);
-    // blink(25, 3);
-
-    // printSysInfo(sys);
-    // Serial.println();
-
-    // startWiFi();
-    // Serial.println();
-
-    // setTime();
-    // Serial.println();
-
-    // char url[50], authkey[50];
-    // strcpy(url, abrp::params::PROTOCOL);
-    // strcat(url, abrp::params::HOST);
-    // strcat(url, abrp::params::SEND_ENDPOINT);
-    // strcpy(authkey, abrp::params::HEADER_AUTH_TEXT);
-    // strcat(authkey, configs::APIKEY);
-    // // c.configure(w, url);
-    // c.urlParams.set(abrp::params::VAR_TOKEN, configs::TOKEN);
-    // c.reqHeaders.set(abrp::params::HEADER_AUTH, authkey);
-
-    // telem.utc = time(nullptr);
-    // telem.soc = randfloat(0, 100, 1);
-    // telem.speed = randfloat(0, 160, 1);
-    // telem.lat = randfloat(-90, 90, 0.001);
-    // telem.lon = randfloat(-180, 180, 0.001);
-    // telem.is_charging = false;
-    // telem.soh = randfloat(0, 100, 1);
-    // log_v("Starting telem: %s", telem.toJSON().c_str());
-
-    // c.urlParams.set(abrp::params::VAR_TELEM, telem.toJSON());
-    // c.get();
-
-    // log_v("Set Up Complete");
-    // beep(880, 50, 2);
-// }
-
-// String telemstr;
-
-// void doLoop() {
-    // Serial.println();
-    // log_v("Main Loop");
-    // unsigned long t = millis();
-
-// #ifdef VERBOSE
-//     blink(100);
-// #endif
-
-    // telem.utc = time(nullptr);
-    // telem.soc = round(telem.soc() + randfloat(-0.5, 0.5, 0.1), 0.1);
-    // telem.speed = round(telem.speed() + randfloat(-5, 5, 0.1), 0.1);
-    // telem.lat = round(telem.lat() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    // telem.lon = round(telem.lon() + randfloat(-0.1, 0.1, 0.0000001), 0.0000001);
-    // telemstr = telem.toJSON();
-    // log_v("Telem: %s", telemstr.c_str());
-
-    // c.urlParams.set(abrp::params::VAR_TELEM, telemstr);
-
-// #ifdef VERBOSE
-//     if (!c.get())
-//         beep(3000, 10, 3);
-// #endif
-
-//     if (millis() - t < configs::LOOP_TIME)
-//         delay(configs::LOOP_TIME - (millis() - t));
-// }
-
-// void startWiFi() {
-//     log_v("Connecting to %s", configs::SSID);
-//     while (WiFi.status() != WL_CONNECTED) {
-//         log_v("Trying to connect");
-//         WiFi.begin(configs::SSID, configs::PASSWORD);
-//         for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED && WiFi.status() != WL_CONNECT_FAILED; i ++) {
-//             log_v("Waiting (%u)", WiFi.status());
-//             delay(500);
-//         }
-//         if (WiFi.status() == WL_CONNECT_FAILED) {
-//             log_v("Failed to connect");
-//             delay(2000);
-//         }
-//     }
-//     log_v("Connected");
-// }
-
 void setTime() {
     time_t now;
     tm* nowtm;
@@ -280,8 +233,6 @@ void setTime() {
     strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
     log_v("System time updated to: %s", buf);
 }
-
-// }
 
 #if CONFIG_AUTOSTART_ARDUINO
 void setup() { app(); }
