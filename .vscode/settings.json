@@ -17,6 +17,13 @@
         "cmath": "cpp",
         "iomanip": "cpp",
         "limits": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "*.ipp": "cpp",
+        "array": "cpp",
+        "list": "cpp",
+        "string_view": "cpp",
+        "memory": "cpp",
+        "random": "cpp",
+        "initializer_list": "cpp"
     }
 }

@@ -12,6 +12,7 @@
 #include "configs.h"
 #include "system.h"
 #include "util.h"
+#include "tasks.h"
 
 using namespace util;
 
@@ -31,9 +32,8 @@ bool isDriving(abrp::telemetry::Telemetry& telem) { return true; }; //TODO: Move
 bool isCharging(abrp::telemetry::Telemetry& telem) { return false; }; //TODO: Move to library
 bool sendTelemetry(sys::clt::HTTP& client, abrp::telemetry::Telemetry& telem);  //TODO: Move to library
 
-char taskbuffer[1024];
-
 #if ABRP_VERBOSE
+char taskbuffer[1024];
 void printTaskList() {
     vTaskList(taskbuffer);
     log_i("Task Info:\nTask Name\tStatus\tPrio\tHWM\tTask\tAffinity\n%s", taskbuffer);
@@ -42,11 +42,9 @@ void printTaskList() {
 #define printTaskList()
 #endif
 
-
-//TODO: move away from Arduino style and just write a main, can avoid globals!
+//Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
 ::FreematicsESP32 freematics;
 sys::clt::HTTP* client;
-// abrp::telemetry::Telemetry telem;
 
 void app() {
     Serial.begin(115200);
