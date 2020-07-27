@@ -12,19 +12,22 @@
 
 namespace tasks {
 
-    //Task Handles
-    TaskHandle_t taskMain;
-    TaskHandle_t taskObd;
-    TaskHandle_t taskTelem;
-    TaskHandle_t taskNet;
-    TaskHandle_t taskSend;
+    struct Handles {
 
-    //Queue Handles
-    QueueHandle_t queueObd2Telem;
-    QueueHandle_t queueTelem2Send;
+        //Task Handles
+        TaskHandle_t taskMain;
+        TaskHandle_t taskObd;
+        TaskHandle_t taskTelem;
+        TaskHandle_t taskNet;
+        TaskHandle_t taskSend;
 
-    //Mutex Handles
-    SemaphoreHandle_t mutexLink;
-    SemaphoreHandle_t mutexClient;
+        //Queue Handles
+        QueueHandle_t queueObd2Telem;
+        QueueHandle_t queueTelem2Send;
+
+        //Mutex Handles
+        SemaphoreHandle_t mutexLink;
+        SemaphoreHandle_t mutexClient;
+    };
 
 }

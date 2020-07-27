@@ -4,7 +4,7 @@
 
 #include "system/obd.h"
 
-#include <FreematicsPlus.h>
+#include "freematics.h"
 
 namespace sys {
     namespace obd {

@@ -2,13 +2,15 @@
  * Task to access PIDs via OBD connection
  */
 
+#include "freematics.h"
+
 #include "tasks/obd.h"
 #include "tasks/common.h"
 #include "system/obd.h"
 #include "configs.h"
 #include "abrp/telemetry.h"
 
-#include <FreematicsPlus.h>
+extern tasks::Handles h;
 
 namespace tasks {
     namespace obd {
@@ -26,12 +28,11 @@ namespace tasks {
                 const TickType_t step = pdMS_TO_TICKS(configs::RATE_OBD_READ);
                 log_d("Entering OBD Loop");
                 while (obd.state() == OBD_CONNECTED && obd.errors < 3) {
-                    //Read OBD
+                    // obd.readPID();
                     if (1) { //OBD is valid
-                        xQueueOverwrite(queueObd2Telem, &telem);
+                        xQueueOverwrite(h.queueObd2Telem, &telem);
                     }
                     vTaskDelayUntil(&last, step);
-                    //TODO: check OBD connection & reinitialize as necessary
                 }
                 log_d("Attempting to connect to OBD");
                 while (!obd.init()) {

@@ -1,4 +1,4 @@
-#include <FreematicsPlus.h>
+#include "freematics.h"
 #ifdef BOARD_HAS_PSRAM
 #ifdef CONFIG_USING_ESPIDF
 #include <esp32/himem.h>
@@ -13,6 +13,7 @@
 #include "system.h"
 #include "util.h"
 #include "tasks.h"
+//TODO: Includes definitely need to be properly organized
 
 using namespace util;
 
@@ -45,6 +46,7 @@ void printTaskList() {
 //Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
 ::FreematicsESP32 freematics;
 sys::clt::HTTP* client;
+tasks::Handles h;
 
 void app() {
     Serial.begin(115200);

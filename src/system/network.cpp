@@ -5,7 +5,7 @@
 #include "system/network.h"
 #include "configs.h"
 
-#include <FreematicsPlus.h>
+#include "freematics.h"
 
 namespace sys {
     namespace net {

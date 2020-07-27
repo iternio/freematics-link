@@ -1,4 +1,4 @@
-#include <FreematicsPlus.h>
+#include "freematics.h"
 #ifdef BOARD_HAS_PSRAM
 #ifdef CONFIG_USING_ESPIDF
 #include <esp32/himem.h>
