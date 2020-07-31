@@ -31,3 +31,5 @@ namespace tasks {
     };
 
 }
+
+inline tasks::Handles taskHandles;

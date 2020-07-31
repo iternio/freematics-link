@@ -46,7 +46,7 @@ void printTaskList() {
 //Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
 ::FreematicsESP32 freematics;
 sys::clt::HTTP* client;
-tasks::Handles h;
+// tasks::Handles h;
 
 void app() {
     Serial.begin(115200);
@@ -70,10 +70,13 @@ void app() {
     beep(880, 50, 2);
 
     log_v("Setting up telemetry reader task");
-    QueueHandle_t telemQ = xQueueCreate(1, sizeof(abrp::telemetry::Telemetry));
-    TaskHandle_t readTask, sendTask;
-    xTaskCreate(taskReadTelemetry, "reader", 8192, telemQ, 10, &readTask);
-    xTaskCreate(taskSendTelemetry, "sender", 8192, telemQ, 15, &sendTask);
+
+    taskHandles.queueObd2Telem = xQueueCreate(10, sizeof(sys::obd::PIDValue));
+    xTaskCreate(tasks::obd::task, "obd", 8192, freematics.link, 20, &taskHandles.taskObd);
+    // QueueHandle_t telemQ = xQueueCreate(1, sizeof(abrp::telemetry::Telemetry));
+    // TaskHandle_t readTask, sendTask;
+    // xTaskCreate(taskReadTelemetry, "reader", 8192, telemQ, 10, &readTask);
+    // xTaskCreate(taskSendTelemetry, "sender", 8192, telemQ, 15, &sendTask);
 
     printTaskList();
     log_v("Beginning main loop");

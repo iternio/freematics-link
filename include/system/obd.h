@@ -26,25 +26,30 @@ namespace sys {
         */
 
        struct PID {
-           uint16_t mode;
+           uint8_t mode;
            uint16_t id;
+           uint16_t header;
            char name[16];
            char unit[8];
         //    char type;
-           char header[4];
+        //    char header[4];
            char formula[24];
         //    uint32_t divisor;
        };
 
         struct PIDValue {
-            PID pid;
-            char raw[10];
-            uint32_t value;
+            const PID & pid;    //TODO: Make this into a reference value?
+            uint32_t sequence;
+            char raw[128];
+            long double value;
         };
 
         class OBD : public ::COBD {
         public:
             OBD_STATES state();
+            uint8_t readPIDRaw(uint8_t mode, uint16_t pid, char * buffer, uint8_t bufsize);
+            uint8_t readPIDRaw(uint16_t pid, char * buffer, uint8_t bufsize);
+            bool normalizePIDFromFormula(char * data, uint8_t datalen, char * formula);
         };
 
         /* Parsed from the following lines in autopi-link:
@@ -69,30 +74,38 @@ namespace sys {
         - There's ambiguity in some cases, like {2:3}, ie, is that an unsigned 16-bit int or bit 3 of byte 2?
         */
 
-        const PID PID_LIST_EMULATOR[] = {
-            {0x1,   0x43, "soc",              "%",        "7E4", "{us:1:2}*100.0/255.0"},
-            {0x1,   0x0C, "voltage",          "V",        "7E4", "{us:1:2}/4.0"},
-            {0x1,   0x05, "current",          "A",        "7E4", "{1}-40.0"},
-            {0x1,   0x0C, "charge_voltage",   "V",        "7E4", "{us:1:2}/4.0"},
-            {0x1,   0x5C, "charge_current",   "A",        "7E4", "{1}-40.0"},
-            {0x1,   0x0E, "is_charging",      "",         "7E4", "{1}"},
-            {0x1,   0x0D, "speed",            "km/h",     "7E4", "{1}"},
+        //TODO: should I try to differentiate between regular and extended PIDs?  Right now, a regular PID just has 0xFF extid
+        inline const PID PID_LIST_EMULATOR[] = {
+            {0x01,   0x43,  0x7E8,  "soc",              "%",     "{us:0:2}*100.0/255.0"},
+            {0x01,   0x0C,  0x7E8,  "voltage",          "V",     "{us:0:2}/4.0"},
+            {0x01,   0x05,  0x7E8,  "current",          "A",     "{0}-40.0"},
+            {0x01,   0x0C,  0x7E8,  "charge_voltage",   "V",     "{us:0:2}/4.0"},
+            {0x01,   0x5C,  0x7E8,  "charge_current",   "A",     "{0}-40.0"},
+            {0x01,   0x0E,  0x7E8,  "is_charging",      "",      "{0:1}"},
+            {0x01,   0x0D,  0x7E8,  "speed",            "km/h",  "{0}"},
         };
-        const uint8_t PID_LIST_EMULATOR_LENGTH = sizeof(PID_LIST_EMULATOR) / sizeof(PID);
+        inline const uint8_t PID_LIST_EMULATOR_LENGTH = sizeof(PID_LIST_EMULATOR) / sizeof(PID);
+        inline const char PID_LIST_EMULATOR_NAME[] = "Emulator";
 
-        const PID PID_LIST_HYUNDAI_KONA[] = {
-            {0x220, 0x105, "soh",              "%",        "7E4", "{32}/2.0"},
-            {0x220, 0x105, "soc",              "%",        "7E4", "{us:26:27}/10.0"},
-            {0x220, 0x101, "voltage",          "V",        "7E4", "{us:13:14}/10.0"},
-            {0x220, 0x101, "current",          "A",        "7E4", "{s:11:12}/10.0"},
-            {0x220, 0x101, "is_charging",      "",         "7E4", "!{51:2}&&{10:0}"},
-            {0x220, 0x100, "ext_temp",         "\xB0""C",  "7B3", "{7}/2.0"},
-            {0x220, 0x101, "batt_temp",        "\xB0""C",  "7E4", "{s:17}/2.0"},//Should this really be signed?
-            {0x22B, 0x002, "odometer",         "km",       "7C6", "{us:10:11}/2.0"},
-            {0x220, 0x100, "speed",            "km/h",     "7B3", "{30}/2.0"},
-            {0x220, 0x101, "kwh_charged",      "kWh",      "7E4", "{41:44}/2.0"}
+        inline const PID PID_LIST_HYUNDAI_KONA[] = {
+            {0x22, 0x0105,  0x7E4,  "soh",              "%",         "{32}/2.0"},
+            {0x22, 0x0105,  0x7E4,  "soc",              "%",         "{us:26:27}/10.0"},
+            {0x22, 0x0101,  0x7E4,  "voltage",          "V",         "{us:13:14}/10.0"},
+            {0x22, 0x0101,  0x7E4,  "current",          "A",         "{s:11:12}/10.0"},
+            {0x22, 0x0101,  0x7E4,  "is_charging",      "",          "!{51:2}&&{10:0}"},
+            {0x22, 0x0100,  0x7B3,  "ext_temp",         "\xB0""C",   "{7}/2.0"},
+            {0x22, 0x0101,  0x7E4,  "batt_temp",        "\xB0""C",   "{s:17}/2.0"},//Should this really be signed?
+            {0x22, 0xB002,  0x7C6,  "odometer",         "km",        "{us:10:11}/2.0"},
+            {0x22, 0x0100,  0x7B3,  "speed",            "km/h",      "{30}/2.0"},
+            {0x22, 0x0101,  0x7E4,  "kwh_charged",      "kWh",       "{41:44}/2.0"}
         };
-        const uint8_t PID_LIST_HYUNDAI_KONA_LENGTH = sizeof(PID_LIST_HYUNDAI_KONA) / sizeof(PID);
+        inline const uint8_t PID_LIST_HYUNDAI_KONA_LENGTH = sizeof(PID_LIST_HYUNDAI_KONA) / sizeof(PID);
+        inline const char PID_LIST_HYUNDAI_KONA_NAME[] = "Hyundai Kona";
+
+        // inline const PID* const PID_LIST_KIA_NIRO = PID_LIST_HYUNDAI_KONA;
+        inline const PID (& PID_LIST_KIA_NIRO)[PID_LIST_HYUNDAI_KONA_LENGTH] = PID_LIST_HYUNDAI_KONA;
+        inline const uint8_t & PID_LIST_KIA_NIRO_LENGTH = PID_LIST_HYUNDAI_KONA_LENGTH;
+        inline const char PID_LIST_KIA_NIRO_NAME[] = "Kia Niro";
 
     }
 }

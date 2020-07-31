@@ -3,4 +3,4 @@
 	url = git@github.com:stanleyhuangyc/Freematics.git
 [submodule "lib/ArduinoJson"]
 	path = lib/ArduinoJson
-	url = https://github.com/bblanchon/ArduinoJson.git
+	url = git@github.com:bblanchon/ArduinoJson.git

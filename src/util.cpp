@@ -6,6 +6,8 @@
 #include <esp_himem.h>
 #endif
 #endif
+#include <charconv>
+#include <cmath>
 #include "util.h"
 
 namespace util {
@@ -96,6 +98,150 @@ namespace util {
         char buffer[1024];
         vTaskList(buffer);
         log_i("Task Info:\nTask Name\tStatus\tPrio\tHWM\tTask\tAffinity\n%s", buffer);
+    }
+
+    uint16_t str_remove(char * s, const char * c = " ") {
+        char * from = s;
+        char * to = s;
+        //TODO: Should this remove just ' ' or also '\n' or '\r' or '\t' (or have flags for these)
+        while (*from) {
+            if (to != from)
+                *to = *from;
+            from++;
+            to++;
+            while (*from && strchr(c, *from))
+                from++;
+        }
+        *to = '\0';
+        return strlen(s);
+    }
+
+    //The below parser generally assumes the formula is well formed and free of syntax errors
+    //If it's not, it likely won't cough, but will just return invalid results
+    long double FormulaParser::parse(const char * formulaptr, const char * dataptr) {
+        formula = formulaptr;
+        saved = formula;
+        data = dataptr;
+        return expression();
+    }
+
+    long double FormulaParser::number() {
+        double result = get() - '0';
+        while (peek() >= '0' && peek() <= '9')
+            result = result * 10 + (get() - '0');
+        if (peek() == '.') {
+            get();  // consume .
+            save();
+            while (peek() >= '0' && peek() <= '9')
+                result += (get() - '0') / pow(10, recall());
+        }
+        return result;
+    }
+
+    long double FormulaParser::substitution() {
+        get(); // consume opening {
+        char type = 0;
+        if (peek() > '9') {
+            type = get();
+            while (get() != ':');
+        }
+        //Assuming data is an array of hex characters (if it's raw bytes, fix this)
+        int from = number(), to;
+        if (get() == ':') { // consume closing } or : separator
+            to = number();
+            get(); // consume closing }
+            if (!type && to < 8) {
+                uint8_t val;
+                std::from_chars(&data[from*2], &data[from*2+2], val, 16);
+                return (val & (1 << to)) >> to;
+            }
+        } else {
+            to = from + 1;
+        }
+        switch (from - to) {
+        case 1: {
+            uint8_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            if (type == 's')
+                return -(int8_t)(~val+1);
+            return val;
+        }
+        case 2: {
+            uint16_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            if (type == 's')
+                return -(int16_t)(~val+1);
+            return val;
+        }
+        case 3:
+        case 4: {
+            uint32_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            if (type == 's')
+                return -(int32_t)(~val+1);
+            return val;
+        }
+        default: {
+            uint64_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            if (type == 's')
+                return -(int64_t)(~val+1);
+            return val;
+        }
+        }
+    }
+
+    long double FormulaParser::factor() {
+        if (peek() >= '0' && peek() <= '9')
+            return number();
+        else if (peek() == '(') {
+            get(); // consume opening (
+            int result = expression();
+            get(); // consume closing )
+            return result;
+        } else if (peek() == '-') {
+            get();  // consume -
+            return -factor();
+        } else if (peek() == '{') {
+            return substitution();
+        }
+        return 0; // error
+    }
+
+    long double FormulaParser::term() {
+        long double result = factor();
+        while (peek() == '*' || peek() == '/')
+            if (get() == '*')
+                result *= factor();
+            else
+                result /= factor();
+        return result;
+    }
+
+    long double FormulaParser::expression() {
+        long double result = term();
+        while (peek() == '+' || peek() == '-')
+            if (get() == '+')
+                result += term();
+            else
+                result -= term();
+        return result;
+    }
+
+    char FormulaParser::get() {
+        return *formula++;
+    }
+
+    char FormulaParser::peek() {
+        return *formula;
+    }
+
+    void FormulaParser::save() {
+        saved = formula;
+    }
+
+    uint8_t FormulaParser::recall() {
+        return formula - saved;
     }
 
 }
