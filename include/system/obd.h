@@ -38,7 +38,8 @@ namespace sys {
        };
 
         struct PIDValue {
-            const PID & pid;    //TODO: Make this into a reference value?
+            const PID * pid;    //TODO: Make this into a reference value?
+            time_t time;
             uint32_t sequence;
             char raw[128];
             long double value;
@@ -49,7 +50,8 @@ namespace sys {
             OBD_STATES state();
             uint8_t readPIDRaw(uint8_t mode, uint16_t pid, char * buffer, uint8_t bufsize);
             uint8_t readPIDRaw(uint16_t pid, char * buffer, uint8_t bufsize);
-            bool normalizePIDFromFormula(char * data, uint8_t datalen, char * formula);
+            char * parseRaw(char * raw, const PID & pid, uint16_t * header = NULL, uint8_t * size = NULL, uint8_t * mode = NULL, uint16_t * id = NULL);
+            long double normalizePIDFromFormula(const char * formula, const char * data);
         };
 
         /* Parsed from the following lines in autopi-link:
@@ -76,7 +78,7 @@ namespace sys {
 
         //TODO: should I try to differentiate between regular and extended PIDs?  Right now, a regular PID just has 0xFF extid
         inline const PID PID_LIST_EMULATOR[] = {
-            {0x01,   0x43,  0x7E8,  "soc",              "%",     "{us:0:2}*100.0/255.0"},
+            {0x01,   0x43,  0x7E8,  "soc",              "%",     "{us:0:2}*100.0/255.0"},   //TODO: This is parsing wrong...
             {0x01,   0x0C,  0x7E8,  "voltage",          "V",     "{us:0:2}/4.0"},
             {0x01,   0x05,  0x7E8,  "current",          "A",     "{0}-40.0"},
             {0x01,   0x0C,  0x7E8,  "charge_voltage",   "V",     "{us:0:2}/4.0"},
@@ -92,7 +94,7 @@ namespace sys {
             {0x22, 0x0105,  0x7E4,  "soc",              "%",         "{us:26:27}/10.0"},
             {0x22, 0x0101,  0x7E4,  "voltage",          "V",         "{us:13:14}/10.0"},
             {0x22, 0x0101,  0x7E4,  "current",          "A",         "{s:11:12}/10.0"},
-            {0x22, 0x0101,  0x7E4,  "is_charging",      "",          "!{51:2}&&{10:0}"},
+            {0x22, 0x0101,  0x7E4,  "is_charging",      "",          "!{51:2}&{10:0}"},
             {0x22, 0x0100,  0x7B3,  "ext_temp",         "\xB0""C",   "{7}/2.0"},
             {0x22, 0x0101,  0x7E4,  "batt_temp",        "\xB0""C",   "{s:17}/2.0"},//Should this really be signed?
             {0x22, 0xB002,  0x7C6,  "odometer",         "km",        "{us:10:11}/2.0"},

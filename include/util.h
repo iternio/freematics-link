@@ -26,8 +26,16 @@ namespace util {
     private:
         long double number();
         long double substitution();
-        long double factor();
-        long double term();
+        long double value();
+        long double exponentiation();
+        long double unary();
+        long double multipicative();
+        long double additive();
+        long double shift();
+        long double comparison();
+        long double bitwise();
+        long double logical();
+        long double ternary();
         long double expression();
         char get();
         char peek();

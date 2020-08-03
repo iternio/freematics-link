@@ -25,6 +25,7 @@
         "memory": "cpp",
         "random": "cpp",
         "initializer_list": "cpp",
-        "charconv": "cpp"
+        "charconv": "cpp",
+        "cstring": "cpp"
     }
 }

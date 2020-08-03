@@ -6,6 +6,7 @@
 
 // #include <string.h>
 #include <ArduinoJson.h>    //TODO: Do we need this? we use very little of it
+//TODO: Remove use of Strings and use char arrays;
 
 namespace abrp {
 
@@ -14,6 +15,7 @@ namespace abrp {
         template <typename T>
         struct Value {
         public:
+            //TODO: find a better way than calling the value to get the value?
             Value() : has_value { false }, value { } {};
             T operator()() { return value; };
             void operator=(T val) { value = val; has_value = true; };
@@ -24,6 +26,7 @@ namespace abrp {
         };
 
         struct Telemetry {
+        //TODO: Enable access to members using [] - avoides lenghty else if chains elsewhere and simplifies adding new fiels or aliasing fields
         public:
             //Mandatory fields
             Value<unsigned long> utc;      //UTC timestamp (s)
@@ -47,23 +50,30 @@ namespace abrp {
             Telemetry() : utc { }, soc { }, speed { }, lat { }, lon { }, is_charging { }, power { }, is_dcfc { },
                 battery_capacity { }, soh { }, elevation { }, ext_temp { }, batt_temp { }, voltage { }, current { }, car_model { }
             {
-                car_model = "freematics";
+                // car_model = "freematics";
             };
 
             String toJSON() {
                 String ret;
+                // log_d("Serializing");
                 //TODO: temporarily commenting this out to resovle build issues
                 // ret = "{}";
                 StaticJsonDocument<JSON_OBJECT_SIZE(16)> doc;
                 //Mandatory fields
-                if (!utc.exists() || !soc.exists() || !speed.exists() || !lat.exists() || !lon.exists() || !is_charging.exists())
-                    return String();
-                doc["utc"] = utc();
-                doc["soc"] = soc();
-                doc["speed"] = speed();
-                doc["lat"] = serialized(String(lat(),7));
-                doc["lon"] = serialized(String(lon(),7));
-                doc["is_charging"] = (is_charging() ? 1 : 0);
+                // if (!utc.exists() || !soc.exists() || !speed.exists() || !lat.exists() || !lon.exists() || !is_charging.exists())
+                //     return String();
+                if (utc.exists())
+                    doc["utc"] = utc();
+                if (soc.exists())
+                    doc["soc"] = soc();
+                if (speed.exists())
+                    doc["speed"] = speed();
+                if (lat.exists())
+                    doc["lat"] = serialized(String(lat(),7));
+                if (lon.exists())
+                    doc["lon"] = serialized(String(lon(),7));
+                if (is_charging.exists())
+                    doc["is_charging"] = (is_charging() ? 1 : 0);
                 //Optional fields
                 if (power.exists())
                     doc["power"] = power();
@@ -86,6 +96,7 @@ namespace abrp {
                 if (car_model.exists())
                     doc["car_model"] = car_model();
                 serializeJson(doc, ret);
+                // log_d("Serialized: %s", ret.c_str());
                 return ret;
             }
         };

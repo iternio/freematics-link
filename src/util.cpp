@@ -125,8 +125,237 @@ namespace util {
         return expression();
     }
 
+    /* Parser should observer the following order of operations:
+        ()              parentheses
+        ^               exponentiation
+        -               unary negation
+        ~               unary bitwise not
+        !               unary logical not
+        * / %           multiplicative
+        + -             additive
+        >> <<           bitwise shift
+        < > <= >= == != comparison
+        & | ^           bitwise operations
+        && ||           logical operations
+        ?:              ternary operator
+    */
+
+    long double FormulaParser::expression() {
+        // Process an expression starting at the bottom of the above list
+        // log_d("expression");
+        return ternary();
+    }
+
+    long double FormulaParser::ternary() {
+        // Process a ternary expression: <term> [ ? <term> : <term> ]
+        // log_d("ternary");
+        long double condition = logical();
+        if (peek() != '?')
+            return condition;
+        get(); // Consume ?
+        if (condition) {
+            long double result = logical();
+            get(); // Consume :
+            logical(); // Consume false value (no designated end delimiter, just have to process it)
+            return result;
+        }
+        logical(); // Consume true value (can't just look for :, as data substitutions use it too)
+        get(); // Consume :
+        return logical();
+    }
+
+    long double FormulaParser::logical() {
+        // Process a logical expression: <term> [ ( || ; && ) <term> ]
+        // log_d("logical");
+        //TODO: Figure out logical & bitwise operations...
+        return bitwise();
+    }
+
+    long double FormulaParser::bitwise() {
+        // Process a bitwise expression: <term> [ ( | ; & ; ^ ) <term> ]
+        // log_d("bitwise");
+        //TODO: Figure out logical & bitwise operations...
+        return comparison();
+    }
+
+    long double FormulaParser::comparison() {
+        // Process a comparison expression: <term> [ ( == ; != ; <= ; >= ; < ; > ) <term> ]
+        // log_d("comparison");
+        //TODO: Figure out logical & bitwise operations...
+        return shift();
+    }
+
+    long double FormulaParser::shift() {
+        // Process a bitshift expression: <term> [ ( << ; >> ) <term> ]
+        // log_d("shift");
+        //TODO: Figure out logical & bitwise operations...
+        return additive();
+    }
+
+    long double FormulaParser::additive() {
+        // Process an add or subtract expression: <term> [ ( + ; - ) <term> ]
+        // log_d("additive");
+        long double result = multipicative();
+        while (true) {
+            switch (peek()) {
+            case '+':
+                get();  // Consume +
+                result += multipicative();
+            case '-':
+                get();  // Consume -
+                result -= multipicative();
+            default:
+                return result;
+            }
+        }
+    }
+
+    long double FormulaParser::multipicative() {
+        // Process a multiply or divide expression: <term> [ ( * ; / ; % ) <term> ]
+        // log_d("multipicative");
+        long double result = unary();
+        while (true) {
+            switch (peek()) {
+            case '*':
+                get();  // Consume *
+                result *= unary();
+            case '/':
+                get();  // Consume /
+                result /= unary();
+            // Figure out modulus
+            // case '%':
+            //     get();  // Consume %
+            //     return result % unary();
+            default:
+                return result;
+            }
+        }
+    }
+
+    long double FormulaParser::unary() {
+        // Process a unary operator expression: [ ( - ; ! ; ~ ) ] <term>
+        // log_d("unary");
+        switch (peek()) {
+            case '-':
+                get(); // Consume -
+                return -unary();
+            //TODO: Figure out logical & bitwise operations...
+            // case '!':
+            //     get(); // Consume !
+            //     return !unary();
+            // case '~':
+            //     get(); //Consume '~'
+            //     return ~unary();
+            default:
+                return exponentiation();
+        }
+    }
+
+    long double FormulaParser::exponentiation() {
+        // Process an exponent expression: <term> [ ^ <term> ]
+        // log_d("exponentiation");
+        long double result = value();
+        while (peek() == '^') {
+            get();  // Consume ^
+            result = pow(result, unary());
+        }
+        return result;
+    }
+
+    long double FormulaParser::value() {
+        // Parse a direct value, either a number or a substitution, or kick back to the top of the list for a parenthetical expression
+        // log_d("value");
+        if (peek() >= '0' && peek() <= '9') {
+            // Value is a number constant
+            return number();
+        } else if (peek() == '{') {
+            // Value is a data substitution
+            return substitution();
+        } else if (peek() == '(') {
+            // Value is a parenthetical expression
+            get(); // consume opening (
+            long double result = expression();
+            get(); // consume closing )
+            return result;
+        }
+        return 0; // Error
+    }
+
+    long double FormulaParser::substitution() {
+        // Process a data substution { [ ( u ; s ) : ] 0-9.* [ : 0-9.* ] }
+        // log_d("substitution");
+        get(); // consume opening {
+        // log_d("%s",formula);
+        char type = 0;
+        if (peek() > '9') {
+            type = get();
+            while (get() != ':');
+        }
+        // log_d("%c", type ? type : ' ');
+        // Assuming data is an array of hex characters (if it's raw bytes, fix this)
+        int from = number(), to;
+        // log_d("%u", from);
+        if (get() == ':') { // consume closing } or : separator
+            to = number();
+            // log_d("%u", to);
+            get(); // consume closing }
+            if (!type && to < 8) {
+                // log_d("1 bit");
+                uint8_t val;
+                std::from_chars(&data[from*2], &data[from*2+2], val, 16);
+                // log_d("%u", val);
+                return (val & (1 << to)) >> to;
+            }
+        } else {
+            to = from + 1;
+            // log_d("%u", to);
+        }
+        // log_d("%i", to - from);
+        switch (to - from) {
+        case 1: {
+            // log_d("8 bit");
+            uint8_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            // log_d("%u", val);
+            if (type == 's')
+                return -(int8_t)(~val+1);
+            return val;
+        }
+        case 2: {
+            // log_d("16 bit");
+            uint16_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            // log_d("%u", val);
+            if (type == 's')
+                return -(int16_t)(~val+1);
+            return val;
+        }
+        case 3:
+        case 4: {
+            // log_d("32 bit");
+            uint32_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            // log_d("%u", val);
+            if (type == 's')
+                return -(int32_t)(~val+1);
+            return val;
+        }
+        default: {
+            // log_d("64 bit");
+            uint64_t val;
+            std::from_chars(&data[from*2], &data[to*2], val, 16);
+            // log_d("%u", val);
+            if (type == 's')
+                return -(int64_t)(~val+1);
+            return val;
+        }
+        }
+    }
+
     long double FormulaParser::number() {
-        double result = get() - '0';
+        // Process a number constant: 0-9.* [ \. 0-9.* ]
+        // log_d("number");
+        long double result = get() - '0';
         while (peek() >= '0' && peek() <= '9')
             result = result * 10 + (get() - '0');
         if (peek() == '.') {
@@ -135,112 +364,33 @@ namespace util {
             while (peek() >= '0' && peek() <= '9')
                 result += (get() - '0') / pow(10, recall());
         }
+        // log_d("%Lf", result);
         return result;
     }
 
-    long double FormulaParser::substitution() {
-        get(); // consume opening {
-        char type = 0;
-        if (peek() > '9') {
-            type = get();
-            while (get() != ':');
-        }
-        //Assuming data is an array of hex characters (if it's raw bytes, fix this)
-        int from = number(), to;
-        if (get() == ':') { // consume closing } or : separator
-            to = number();
-            get(); // consume closing }
-            if (!type && to < 8) {
-                uint8_t val;
-                std::from_chars(&data[from*2], &data[from*2+2], val, 16);
-                return (val & (1 << to)) >> to;
-            }
-        } else {
-            to = from + 1;
-        }
-        switch (from - to) {
-        case 1: {
-            uint8_t val;
-            std::from_chars(&data[from*2], &data[to*2], val, 16);
-            if (type == 's')
-                return -(int8_t)(~val+1);
-            return val;
-        }
-        case 2: {
-            uint16_t val;
-            std::from_chars(&data[from*2], &data[to*2], val, 16);
-            if (type == 's')
-                return -(int16_t)(~val+1);
-            return val;
-        }
-        case 3:
-        case 4: {
-            uint32_t val;
-            std::from_chars(&data[from*2], &data[to*2], val, 16);
-            if (type == 's')
-                return -(int32_t)(~val+1);
-            return val;
-        }
-        default: {
-            uint64_t val;
-            std::from_chars(&data[from*2], &data[to*2], val, 16);
-            if (type == 's')
-                return -(int64_t)(~val+1);
-            return val;
-        }
-        }
-    }
-
-    long double FormulaParser::factor() {
-        if (peek() >= '0' && peek() <= '9')
-            return number();
-        else if (peek() == '(') {
-            get(); // consume opening (
-            int result = expression();
-            get(); // consume closing )
-            return result;
-        } else if (peek() == '-') {
-            get();  // consume -
-            return -factor();
-        } else if (peek() == '{') {
-            return substitution();
-        }
-        return 0; // error
-    }
-
-    long double FormulaParser::term() {
-        long double result = factor();
-        while (peek() == '*' || peek() == '/')
-            if (get() == '*')
-                result *= factor();
-            else
-                result /= factor();
-        return result;
-    }
-
-    long double FormulaParser::expression() {
-        long double result = term();
-        while (peek() == '+' || peek() == '-')
-            if (get() == '+')
-                result += term();
-            else
-                result -= term();
-        return result;
-    }
+    //----------------------------
 
     char FormulaParser::get() {
+        //Return current character and advance to next
+        while (*formula == ' ' || *formula == '\t' || *formula == '\r' || *formula == '\n') { // Consume white space
+            saved ++;   // Saved is primarily used to count characters, so it shouldn't count ignored white space
+            formula++;
+        }
         return *formula++;
     }
 
     char FormulaParser::peek() {
+        //Return current character only
         return *formula;
     }
 
     void FormulaParser::save() {
+        //Save current position for later comparison
         saved = formula;
     }
 
     uint8_t FormulaParser::recall() {
+        //Return number of characters processed since last saved
         return formula - saved;
     }
 

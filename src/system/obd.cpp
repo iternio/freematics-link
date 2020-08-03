@@ -5,6 +5,8 @@
 #include "system/obd.h"
 
 #include "freematics.h"
+#include <charconv>
+#include "util.h"
 
 namespace sys {
     namespace obd {
@@ -27,14 +29,65 @@ namespace sys {
             return readPIDRaw(0x01, pid, buffer, bufsize);
         }
 
-        bool OBD::normalizePIDFromFormula(char * data, uint8_t datalen, char * formula) {
-            //Parse value tokens
-            // double values[10];
-            // char * c1, c2;
+        char * OBD::parseRaw(char * raw, const PID & pid, uint16_t * header, uint8_t * size, uint8_t * mode, uint16_t * id) {
+            char * p = raw;
+            uint16_t val;
+            if (header)
+                *header = 0;
+            if (mode)
+                *mode = 0;
+            if (size)
+                *size = 0;
+            if (id)
+                *id = 0;
+            //Clean up raw data
+            util::str_remove(raw, " \r\n>");
+            //Check responder header matches expectation
+            std::from_chars(p, p + 3, val, 16);
+            if (header)
+                *header = val;
+            p += 3;
+            if (val != pid.header) {
+                log_d("Header mismatch: %03X != %03X", header, pid.header);
+                return 0;
+            }
+            //Check given size matches actual data
+            std::from_chars(p, p + 2, val, 16);
+            if (size)
+                *size = val;
+            p += 2;
+            if (val != strlen(p) / 2) {
+                log_d("Size mismatch: %u != %u", size, strlen(p) / 2);
+                return 0;
+            }
+            //Check response mode matches expectation
+            std::from_chars(p, p + 2, val, 16);
+            if (mode)
+                *mode = val;
+            size -= 1;
+            p += 2;
+            if (val != pid.mode + 0x40) {
+                log_d("Mode mismatch: %02X != %02X", mode, pid.mode + 0x40);
+                return 0;
+            }
+            //Do all manufacturer specific higher order mode PIDs have 2 byte ids?  This check may need to be more advanced
+            std::from_chars(p, p + (pid.mode > 0x09 && pid.id > 0xFF ? 4 : 2), val, 16);
+            if (id)
+                *id = val;
+            size -= (pid.mode > 0x09 && pid.id > 0xFF ? 2 : 1);
+            p += (pid.mode > 0x09 && pid.id > 0xFF ? 4 : 2);
+            if (val != pid.id) {
+                log_d("ID mismatch: %0.*X != %0.*X", (pid.mode > 0x09 && pid.id > 0xFF ? 4 : 2), id,
+                    (pid.mode > 0x09 && pid.id > 0xFF ? 4 : 2), pid.id);
+                return 0;
+            }
+            return p;
+        }
 
-
-
-            return false;
+        long double OBD::normalizePIDFromFormula(const char * formula, const char * data) {
+            static util::FormulaParser parser;
+            // log_d("%s <-- %s", formula, data);
+            return parser.parse(formula, data);
         }
 
         OBD_STATES OBD::state() {

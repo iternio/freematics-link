@@ -17,6 +17,7 @@ namespace configs {
 
     inline const short LOOP_TIME = 10000;  //How often to repeat main loop, ms
     inline const short RATE_OBD_READ = 10000;
+    inline const short RATE_TELEM_CONVERT = 0;
     inline const short RATE_TELEM_SEND = 20000;
 
     USE_PID_LIST(EMULATOR);
