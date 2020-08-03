@@ -19,6 +19,10 @@ namespace tasks {
 
         void task(void* param) {
             log_d("Beginning OBD Task");
+            #if ABRP_VERBOSE
+            delay(200);
+            #endif
+
             CLink* link = (CLink*)param;
             sys::obd::OBD obd;
             char buffer[128];
@@ -36,7 +40,7 @@ namespace tasks {
                 log_d("Entering OBD Loop");
                 while (obd.state() == OBD_CONNECTED && obd.errors < 3) {
                     queued = 0;
-                    seq ++;
+                    seq ++; //TODO: How to handle overflow...?
                     time(&utc);
                     log_d("Reading %u PIDs for %s at %u (#%u)", configs::PID_LIST_LENGTH, configs::PID_LIST_NAME, utc, seq);
                     for (uint8_t idx = 0; idx < configs::PID_LIST_LENGTH;  idx++) {
@@ -52,7 +56,7 @@ namespace tasks {
                         // log_v("%s at %X", value.pid->name, &value.pid);
                         strcpy(value.raw, data);
                         // log_d("%s: Parsed value as %Lf", value.raw, value.value);
-                        log_d("Read PID %02X %0*X - %s = %Lf (%s)", pid->mode, (pid->mode > 0x09 && pid->id > 0xFF ? 4 : 2), pid->id, pid->name, value.value, value.raw);
+                        // log_d("Read PID %02X %0*X - %s = %Lf (%s)", pid->mode, (pid->mode > 0x09 && pid->id > 0xFF ? 4 : 2), pid->id, pid->name, value.value, value.raw);
                         if (!xQueueSendToBack(taskHandles.queueObd2Telem, &value, 0))
                             log_d("Failed put value in queue");
                         else

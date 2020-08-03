@@ -17,6 +17,9 @@ namespace tasks {
 
         void task(void * param) {
             log_d("Beginning Telemetry Task");
+            #if ABRP_VERBOSE
+            delay(200);
+            #endif
 
             // TickType_t last = 0, current = 0;
             time_t last = 0, current = 0;
@@ -24,7 +27,7 @@ namespace tasks {
             log_d("Entering Telemetry Loop");
             while(true) {   //Main Loop
                 while (!(last = ulTaskNotifyTake(pdTRUE, configs::RATE_OBD_READ)));
-                log_d("Items available to read");
+                log_d("Items available to read (Up to #%u)", last);
                 do {  //Loop through backlog of queued telemetry sets
                     abrp::telemetry::Telemetry telem;
                     current = 0;
@@ -33,7 +36,7 @@ namespace tasks {
                         sys::obd::PIDValue val;
                         while (!xQueuePeek(taskHandles.queueObd2Telem, &val, 10))
                             log_d("Failed to get item from queue (%u items in queue)", uxQueueMessagesWaiting(taskHandles.queueObd2Telem));
-                        if (current && val.sequence > current)
+                        if (current && val.sequence > current)  //TODO: How to handle overflow...?
                             break;
                         else if (!current) {
                             current = val.sequence;
@@ -41,7 +44,7 @@ namespace tasks {
                         }
                         //TODO: Figure out if there's a better way than writing to val twice...
                         xQueueReceive(taskHandles.queueObd2Telem, &val, 0);
-                        log_d("%u: %s = %Lf", val.time, val.pid->name, val.value);
+                        // log_d("%u: %s = %Lf", val.time, val.pid->name, val.value);
                         if (strcmp(val.pid->name, "soc") == 0)
                             telem.soc = val.value;
                         else if (strcmp(val.pid->name, "speed") == 0)
@@ -70,10 +73,11 @@ namespace tasks {
                             telem.voltage = val.value;
                         else if (strcmp(val.pid->name, "current") == 0)
                             telem.current = val.value;
-                        else
-                            log_e("Unknown telemetry value: %s", val.pid->name);
+                        // else
+                        //     log_e("Unknown telemetry value: %s", val.pid->name);
                     }
-                    log_d("JSON: %s", telem.toJSON().c_str());
+                    log_d("JSON (#%u): %s", current, telem.toJSON().c_str());
+                    //TODO: Actuall enqueue the JSON for the next task to consume
                 } while (current < last);
                 // vTaskDelayUntil(&last, step);  This task delays in the wait for notify function, so don't need this
             }

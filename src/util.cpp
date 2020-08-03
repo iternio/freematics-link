@@ -95,9 +95,9 @@ namespace util {
         // heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
         // heap_caps_print_heap_info(MALLOC_CAP_INVALID);
         // heap_caps_dump_all();
-        char buffer[1024];
-        vTaskList(buffer);
-        log_i("Task Info:\nTask Name\tStatus\tPrio\tHWM\tTask\tAffinity\n%s", buffer);
+        // char buffer[1024];
+        // vTaskList(buffer);
+        // log_i("Task Info:\nTask Name\tStatus\tPrio\tHWM\tTask\tAffinity\n%s", buffer);
     }
 
     uint16_t str_remove(char * s, const char * c = " ") {
