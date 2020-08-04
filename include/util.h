@@ -16,7 +16,7 @@ namespace util {
     void blink(uint32_t ms = 50, byte n = 1);
     void beep(uint32_t freq = 2000, uint32_t ms = 50, byte n = 1);
 
-    void printSysInfo(const FreematicsESP32& sys);
+    // void printSysInfo(const FreematicsESP32& sys);
 
     uint16_t str_remove(char * s, const char * c);
 

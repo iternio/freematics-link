@@ -1,12 +1,12 @@
 #include "freematics.h"
-#ifdef BOARD_HAS_PSRAM
-#ifdef CONFIG_USING_ESPIDF
-#include <esp32/himem.h>
-#else
-#include <esp_himem.h>
-#endif
-#endif
-#include <lwip/apps/sntp.h>
+// #ifdef BOARD_HAS_PSRAM
+// #ifdef CONFIG_USING_ESPIDF
+// #include <esp32/himem.h>
+// #else
+// #include <esp_himem.h>
+// #endif
+// #endif
+// #include <lwip/apps/sntp.h>
 
 #include "abrp.h"
 #include "configs.h"
@@ -34,8 +34,11 @@ void ptl() {
     for (listtaskidx = 0; listtaskidx < listtaskcount; listtaskidx++) {
         if (listtaskstatus[listtaskidx].xHandle == taskHandles.taskMain ||
             listtaskstatus[listtaskidx].xHandle == taskHandles.taskObd ||
-            listtaskstatus[listtaskidx].xHandle == taskHandles.taskTelem) {
-            log_d("%8u\t%08X\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8lu\t%5u\t%2i",
+            listtaskstatus[listtaskidx].xHandle == taskHandles.taskTelem ||
+            listtaskstatus[listtaskidx].xHandle == taskHandles.taskNet ||
+            listtaskstatus[listtaskidx].xHandle == taskHandles.taskInit ||
+            listtaskstatus[listtaskidx].xHandle == taskHandles.taskSend) {
+            log_d("%8u\t%08X\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8lu\t%5u\t%2d",
                 listtaskticks,
                 listtaskstatus[listtaskidx].xHandle,
                 listtaskstatus[listtaskidx].pcTaskName,
@@ -45,7 +48,7 @@ void ptl() {
                 listtaskstatus[listtaskidx].uxCurrentPriority,
                 listtaskstatus[listtaskidx].ulRunTimeCounter,
                 listtaskstatus[listtaskidx].usStackHighWaterMark,
-                listtaskstatus[listtaskidx].xCoreID
+                (listtaskstatus[listtaskidx].xCoreID > 1 ? -1 : listtaskstatus[listtaskidx].xCoreID)
             );
         }
     }
@@ -54,29 +57,54 @@ void ptl() {
 #define ptl()
 #endif
 
+//TODO: Make sure to properly clean up namespaces (including :: prefix to indicate global ns)
 //Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
 ::FreematicsESP32 freematics;
-sys::clt::HTTP* client;
+// sys::clt::HTTP* client;
 
 void app() {
     Serial.begin(115200);
-    taskHandles.taskMain = xTaskGetCurrentTaskHandle();
     // beep(880, 50);
+    taskHandles.taskMain = xTaskGetCurrentTaskHandle();
+    ptl();
+
+    taskHandles.flags = xEventGroupCreate();
+
+    ptl();
+    xTaskCreate(tasks::init::task, "init", 8192, &freematics, 25, &taskHandles.taskInit);
+    ptl();
+    delay(200);
+    ptl();
+    delay(200);
+    ptl();
+
+    while (!ulTaskNotifyTake(pdFALSE, 100));
+
+    ptl();
+    xTaskCreate(tasks::net::task, "net", 8192, NULL, 25, &taskHandles.taskNet);
+    ptl();
+    delay(200);
+    ptl();
+    delay(200);
+    ptl();
+
+    while (!ulTaskNotifyTake(pdFALSE, 100));
+
     log_v("System boot complete");
     ptl();
     Serial.println();
 
-    log_v("Initializing system");
+    // log_v("Initializing system");
     // ::FreematicsESP32 freematics;
-    initializeSystem(freematics);
-    log_v("Initialization complete");
+    // initializeSystem(freematics);
+    // log_v("Initialization complete");
 
-    log_v("Getting network connection");
+    // log_v("Getting network connection");
     // sys::clt::HTTP* client = sys::net::getClient();
-    client = sys::net::getClient();
+    // client = sys::net::getClient();
 
-    log_v("Setting system time");
-    setTime();
+    // log_v("Setting system time");
+    // setTime();
 
     // beep(880, 50, 2);
 
@@ -107,51 +135,51 @@ void app() {
 
 
 
-bool initializeSystem(::FreematicsESP32& system) {
-    //TODO: Move this to a library?
-#if !CONFIG_AUTOSTART_ARDUINO
-    log_v("Initializing Arduino system");
-    initArduino();
-#endif
-    log_v("Initializing Freematics system");
-    if (!system.begin()) {
-        log_e("Freematics system failed to initialize");
-        return false;
-    }
-    ptl();
-    printSysInfo(system);
-    ptl();
-    return true;
-}
+// bool initializeSystem(::FreematicsESP32& system) {
+//     //TODO: Move this to a library?
+// #if !CONFIG_AUTOSTART_ARDUINO
+//     log_v("Initializing Arduino system");
+//     initArduino();
+// #endif
+//     log_v("Initializing Freematics system");
+//     if (!system.begin()) {
+//         log_e("Freematics system failed to initialize");
+//         return false;
+//     }
+//     ptl();
+//     printSysInfo(system);
+//     ptl();
+//     return true;
+// }
 
-void setTime() {
-    //TODO: Sometimes this takes forever, figure out why, maybe stop & restart?
-    time_t now;
-    tm* nowtm;
-    char buf[35];
-    time(&now);
-    nowtm = gmtime(&now);
-    strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
-    log_v("Current system time: %s", buf);
-    log_v("Getting time via SNTP");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, (char*)"pool.ntp.org");
-    sntp_init();
-    delay(500);
-    while (time(nullptr) < (2020 - 1970) * 365 * 24 * 3600) {
-        log_v("Waiting");
-        delay(1000);
-    }
-    // sntp_stop();
-    time(&now);
-    nowtm = gmtime(&now);
-    strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
-    log_v("System time updated to: %s", buf);
-}
+// void setTime() {
+//     //TODO: Sometimes this takes forever, figure out why, maybe stop & restart?
+//     time_t now;
+//     tm* nowtm;
+//     char buf[35];
+//     time(&now);
+//     nowtm = gmtime(&now);
+//     strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
+//     log_v("Current system time: %s", buf);
+//     log_v("Getting time via SNTP");
+//     sntp_setoperatingmode(SNTP_OPMODE_POLL);
+//     sntp_setservername(0, (char*)"pool.ntp.org");
+//     sntp_init();
+//     delay(500);
+//     while (time(nullptr) < (2020 - 1970) * 365 * 24 * 3600) {
+//         log_v("Waiting");
+//         delay(1000);
+//     }
+//     // sntp_stop();
+//     time(&now);
+//     nowtm = gmtime(&now);
+//     strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
+//     log_v("System time updated to: %s", buf);
+// }
 
 #if CONFIG_AUTOSTART_ARDUINO
 void setup() { app(); }
-void loop()  {}
+void loop()  { delay(60000); }
 #else
 extern "C" void app_main() { app(); }
 #endif
