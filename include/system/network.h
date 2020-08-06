@@ -4,22 +4,24 @@
 
 #pragma once
 
-#include <client.h>
+// #include <Client.h>
 // #include <string.h>
 
 #include "http.h"
-// #include "networks/wifi.h"
-// #include "networks/bt.h"
-// #include "networks/sim.h"
+#include "networks/common.h"
+#include "networks/wifi.h"
+#include "networks/bt.h"
+#include "networks/sim.h"
 
 namespace sys {
     namespace net {
 
         enum NetworkPriorities {
             NETWORK_WIFI,
+            NETWORK_WIFI_SECONDARY,
             NETWORK_BT,
             NETWORK_SIM,
-            // NETWORK_COUNT
+            NETWORK_COUNT
         };
 
         clt::HTTP* getClient();
