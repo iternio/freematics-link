@@ -23,40 +23,6 @@ bool initializeSystem(::FreematicsESP32& system);
 //Helper functions (most likely to move to libraries)
 void setTime(); //TODO: Move to library
 
-#if ABRP_VERBOSE
-TaskStatus_t listtaskstatus[30];
-uint8_t listtaskidx = 0, listtaskcount = 0;
-TickType_t listtaskticks = 0;
-void ptl() {
-    listtaskticks = xTaskGetTickCount();
-    listtaskcount = uxTaskGetSystemState(listtaskstatus, 30, NULL);
-    log_d("Ticks   \tHandle  \tName      \tS\tNo\tBP\tCP\tTime    \tHWM  \tCPU");
-    for (listtaskidx = 0; listtaskidx < listtaskcount; listtaskidx++) {
-        if (listtaskstatus[listtaskidx].xHandle == taskHandles.taskMain ||
-            listtaskstatus[listtaskidx].xHandle == taskHandles.taskObd ||
-            listtaskstatus[listtaskidx].xHandle == taskHandles.taskTelem ||
-            listtaskstatus[listtaskidx].xHandle == taskHandles.taskNet ||
-            listtaskstatus[listtaskidx].xHandle == taskHandles.taskInit ||
-            listtaskstatus[listtaskidx].xHandle == taskHandles.taskSend) {
-            log_d("%8u\t%08X\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8lu\t%5u\t%2d",
-                listtaskticks,
-                listtaskstatus[listtaskidx].xHandle,
-                listtaskstatus[listtaskidx].pcTaskName,
-                listtaskstatus[listtaskidx].eCurrentState,
-                listtaskstatus[listtaskidx].xTaskNumber,
-                listtaskstatus[listtaskidx].uxBasePriority,
-                listtaskstatus[listtaskidx].uxCurrentPriority,
-                listtaskstatus[listtaskidx].ulRunTimeCounter,
-                listtaskstatus[listtaskidx].usStackHighWaterMark,
-                (listtaskstatus[listtaskidx].xCoreID > 1 ? -1 : listtaskstatus[listtaskidx].xCoreID)
-            );
-        }
-    }
-}
-#else
-#define ptl()
-#endif
-
 //TODO: Make sure to properly clean up namespaces (including :: prefix to indicate global ns)
 //Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
 ::FreematicsESP32 freematics;
@@ -66,32 +32,35 @@ void app() {
     Serial.begin(115200);
     // beep(880, 50);
     taskHandles.taskMain = xTaskGetCurrentTaskHandle();
-    ptl();
+    util::ptl();
 
     taskHandles.flags = xEventGroupCreate();
 
-    ptl();
+    util::ptl();
     xTaskCreate(tasks::init::task, "init", 8192, &freematics, 25, &taskHandles.taskInit);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
 
     while (!ulTaskNotifyTake(pdFALSE, 100));
 
-    ptl();
-    xTaskCreate(tasks::net::task, "net", 8192, NULL, 25, &taskHandles.taskNet);
-    ptl();
+    util::ptl();
+    // xTaskCreate(tasks::net::task, "net", 8192, NULL, 25, &taskHandles.taskNet);
+    // xTaskCreate(tasks::run<tasks::net::NetworkTask>, "net", 8192, NULL, 25, &taskHandles.taskNet);
+    // /* taskHandles.taskNet =  */tasks::test<tasks::net::NetworkTask>();
+    taskHandles.taskNet = tasks::create<tasks::net::NetworkTask>();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
 
     while (!ulTaskNotifyTake(pdFALSE, 100));
 
     log_v("System boot complete");
-    ptl();
+    util::ptl();
     Serial.println();
 
     // log_v("Initializing system");
@@ -109,24 +78,26 @@ void app() {
     // beep(880, 50, 2);
 
     taskHandles.queueObd2Telem = xQueueCreate(configs::PID_LIST_LENGTH * 10, sizeof(sys::obd::PIDValue));
-    ptl();
+    util::ptl();
     xTaskCreate(tasks::obd::task, "obd", 8192, freematics.link, 20, &taskHandles.taskObd);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
     delay(600);
-    ptl();
+    util::ptl();
     xTaskCreate(tasks::telem::task, "telem", 8192, freematics.link, 15, &taskHandles.taskTelem);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
     delay(200);
-    ptl();
+    util::ptl();
+    delay(10000);
+    util::ptl(true);
 
     while(true) {
-        ptl();
+        util::ptl();
         delay(30000);
     }
 }
@@ -146,9 +117,9 @@ void app() {
 //         log_e("Freematics system failed to initialize");
 //         return false;
 //     }
-//     ptl();
+//     util::ptl();
 //     printSysInfo(system);
-//     ptl();
+//     util::ptl();
 //     return true;
 // }
 

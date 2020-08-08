@@ -24,7 +24,7 @@ namespace sys {
             NETWORK_COUNT
         };
 
-        clt::HTTP* getClient();
+        // clt::HTTP* getClient();
 
     }
 }

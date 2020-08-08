@@ -9,6 +9,7 @@
 #include <charconv>
 #include <cmath>
 #include "util.h"
+#include "tasks/common.h"
 
 namespace util {
 
@@ -67,6 +68,40 @@ namespace util {
         *to = '\0';
         return strlen(s);
     }
+
+#if ABRP_VERBOSE
+    TaskStatus_t listtaskstatus[30];
+    uint8_t listtaskidx = 0, listtaskcount = 0;
+    TickType_t listtaskticks = 0;
+    void ptl(bool all) {
+        listtaskticks = xTaskGetTickCount();
+        listtaskcount = uxTaskGetSystemState(listtaskstatus, 30, NULL);
+        log_d("Ticks   \tHandle  \tName      \tS\tNo\tBP\tCP\tTime    \tHWM  \tCPU");
+        for (listtaskidx = 0; listtaskidx < listtaskcount; listtaskidx++) {
+            if (all || listtaskstatus[listtaskidx].xHandle == taskHandles.taskMain ||
+                listtaskstatus[listtaskidx].xHandle == taskHandles.taskObd ||
+                listtaskstatus[listtaskidx].xHandle == taskHandles.taskTelem ||
+                listtaskstatus[listtaskidx].xHandle == taskHandles.taskNet ||
+                listtaskstatus[listtaskidx].xHandle == taskHandles.taskInit ||
+                listtaskstatus[listtaskidx].xHandle == taskHandles.taskSend) {
+                log_d("%8u\t%08X\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8lu\t%5u\t%2d",
+                    listtaskticks,
+                    listtaskstatus[listtaskidx].xHandle,
+                    listtaskstatus[listtaskidx].pcTaskName,
+                    listtaskstatus[listtaskidx].eCurrentState,
+                    listtaskstatus[listtaskidx].xTaskNumber,
+                    listtaskstatus[listtaskidx].uxBasePriority,
+                    listtaskstatus[listtaskidx].uxCurrentPriority,
+                    listtaskstatus[listtaskidx].ulRunTimeCounter,
+                    listtaskstatus[listtaskidx].usStackHighWaterMark,
+                    (listtaskstatus[listtaskidx].xCoreID > 1 ? -1 : listtaskstatus[listtaskidx].xCoreID)
+                );
+            }
+        }
+    }
+#else
+#define ptl()
+#endif
 
     //The below parser generally assumes the formula is well formed and free of syntax errors
     //If it's not, it likely won't cough, but will just return invalid results

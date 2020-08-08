@@ -16,6 +16,7 @@
 #include "tasks/common.h"
 #include "tasks/init.h"
 #include "configs.h"
+#include "util.h"
 
 namespace tasks {
     namespace init {
@@ -26,14 +27,18 @@ namespace tasks {
             //Perform initial system set up
 #if !CONFIG_AUTOSTART_ARDUINO
             log_v("Initializing Arduino system");
+            util::ptl();
             initArduino();
+            util::ptl();
 #endif
             log_v("Initializing Freematics system");
+            util::ptl();
             if (!system->begin()) {
                 log_e("Freematics system failed to initialize");
                 delay(10000);
                 assert(false);
             }
+            util::ptl();
 
             esp_chip_info_t cinfo;
             esp_chip_info(&cinfo);
