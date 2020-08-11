@@ -5,7 +5,7 @@
 #pragma once
 
 // #include <string.h>
-#include <ArduinoJson.h>    //TODO: Do we need this? we use very little of it
+#include <ArduinoJson.h>    //TODO: Do we need this? we use very little of it.  Maybe cJSON instead?
 //TODO: Remove use of Strings and use char arrays;
 
 namespace abrp {

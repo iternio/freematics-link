@@ -37,6 +37,7 @@ namespace tasks {
     };
 
     enum Flags {
+        FLAG_NONE               = 0,
         FLAG_HAS_NETWORK        = bit(0),
         FLAG_NETWORK_IS_WIFI    = bit(1),
         FLAG_NETWORK_IS_SIM     = bit(2),

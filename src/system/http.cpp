@@ -6,6 +6,8 @@
 
 #include "freematics.h"
 
+#define DRY_RUN
+
 namespace sys {
     namespace clt {
 
@@ -119,23 +121,27 @@ namespace sys {
             return -1;
         }
 
-        HTTP::HTTP() : reqHeaders("request headers"), urlParams("url parameters"),
-            bodyParams("body parameters"), resHeaders("response headers") {}
+        //TODO: Move all initializations here
+        HTTP::HTTP() :
+            reqHeaders("request headers"),
+            urlParams("url parameters"),
+            bodyParams("body parameters"),
+            resHeaders("response headers") {}
 
         HTTP::~HTTP() {
             done();
         }
 
-        bool HTTP::configure(Client& clt) {
-            client = &clt;
+        bool HTTP::configure(Client * clt) {
+            client = clt;
             return true;
         }
 
-        bool HTTP::configure(Client& clt, const String &url) {
+        bool HTTP::configure(Client * clt, const String &url) {
             return configure(clt) && setUrl(url);
         }
 
-        bool HTTP::configure(Client &clt, const String& hst, unsigned short prt, const String& endp, bool s) {
+        bool HTTP::configure(Client * clt, const String& hst, unsigned short prt, const String& endp, bool s) {
             log_v("Protocol: http%s Host: %s Port: %u Endpoint: %s", s ? "s" : "", hst.c_str(), prt, endp.c_str());
             return configure(clt) && setUrl(hst, prt, endp, s);
         }
@@ -439,7 +445,13 @@ namespace sys {
                 log_v("No request to send");
                 return false;
             }
+#ifdef DRY_RUN
+            unsigned int s = size;
+            log_v("Request:\n%s", req);
+            return true;
+#else
             unsigned int s = client->write(req, size);
+#endif
             log_v("Sent %u, expected %u", s, size);
             if (s < size) {
                 log_v("Failed to send data");

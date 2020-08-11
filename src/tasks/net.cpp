@@ -10,42 +10,31 @@
 #include "configs.h"
 #include "system/network.h"
 
+//TODO: It's looking more and more like I should directly make use of the ESP wifi driver rather than the
+//Arduino style WiFi wrapper object, due to some of the constraints seen when scanning.  There's likely
+//settings to be configured in the driver that are hidden by the WiFi object...  For now, I seem to have
+//settled into a mostly working configuration, but there's definitely a lot of things that can be optimized
+//for quicker scan/connect times and more robust network connection maintenance. This would include setting
+//scans to only search for the target AP, listening directly to WiFi disconnect events, etc. This would prob
+//lend itself to using a true state-machine style code here...
+
 namespace tasks {
     namespace net {
 
-        // class NetworkTask {
-        // public:
-        //     NetworkTask();
-        //     void run();
-
-        // private:
-        //     bool findWiFiNetwork(const char * const ssid);
-        //     bool connectToWiFiNetwork(const char * const ssid, const char * const password);
-        //     bool connectToCellNetwork();
-        //     bool connectToBluetoothDevice();
-        //     bool tryConnections();
-        //     bool checkInternetConnection();
-
-        //     ::Client * network;
-        //     bool hasNetwork;
-        //     uint8_t currentNetwork;
-        //     bool hasInternet;
-
-        // public:
-        //     static const sys::net::NetworkPriorities priorities[];
-        //     static const uint8_t numPriorities;
-        //     static const uint32_t checkConnectionRate;
-        //     static const uint32_t noConnectionRate;
-        //     static const uint8_t tryUpgradeCycles;
-        //     static const bool deleteSelfWhenDone;
-        // };
-
         const char NetworkTask::name[] = "net";
         const uint32_t NetworkTask::memory = 6144;
-        const uint8_t NetworkTask::priority = 20;
+        const uint8_t NetworkTask::priority = 15;
 
         //TODO: Make these constants in configs
-        const sys::net::NetworkPriorities NetworkTask::priorities[] = {sys::net::NETWORK_WIFI, sys::net::NETWORK_WIFI_SECONDARY, sys::net::NETWORK_SIM};
+        //TODO: commented out the multiple wifi network options.  There's all kinds of quirks the arise when trying to scan for wifi
+        //networks while already connected.  Scanning for wifi networks while the system is trying to reconnect to a lost network
+        //(or maybe even just thinks its still connected to a lost network) will crash the system.  It will also sometimes take a
+        //while to recognize that it's disconnected, and it's not safe to scan while it's in that state...  Safestes option is pick
+        //one wifi network and stick with it.  An alternative to primary & secondary wifi options is to have a list of valid networks
+        //and if, when searching, any one is found, just connect to it, and don't search for a new one until that one is lost...
+        //Also, might be good to subscribe to some sort of system events to detect loss of wifi rather than just pinging every so often
+        //Perhaps also possible to disable the auto reconnect feature so we can manage it more directly here?  Or just use esp wifi API direclty?
+        const sys::net::NetworkPriorities NetworkTask::priorities[] = {/* sys::net::NETWORK_WIFI,  */sys::net::NETWORK_WIFI_SECONDARY, sys::net::NETWORK_SIM};
         const uint8_t NetworkTask::numPriorities = sizeof(NetworkTask::priorities) / sizeof(sys::net::NetworkPriorities);
         const uint32_t NetworkTask::checkConnectionRate = 30000;
         const uint32_t NetworkTask::noConnectionRate = 10000;
@@ -62,16 +51,34 @@ namespace tasks {
             //so we don't have to kill the current network to try to find a better one.  But if we've lost our
             //connection, and the system doesn't properly report as fully disconnected, it is likely still trying to
             //reconnect, so we should call disconnect to make sure it stops before scanning for networks (hopefully)
-            if ((hasNetwork && WiFi.status() != WL_CONNECTED) ||
-                (!hasNetwork && WiFi.status() != WL_DISCONNECTED)) {
-                log_v("First, disconnecting from WiFi");
-                WiFi.disconnect();
-                log_d("B %u %u", WiFi.status(), WiFi.isConnected());
-                delay(500);
-                log_d("C %u %u", WiFi.status(), WiFi.isConnected());
-            }
+            // if ((hasNetwork && WiFi.status() != WL_CONNECTED) ||
+            //     (!hasNetwork && WiFi.status() != WL_DISCONNECTED && WiFi.status() != WL_IDLE_STATUS && WiFi.status() != WL_NO_SHIELD)) {
+            //     log_v("First, disconnecting from WiFi");
+            //     WiFi.disconnect();
+            //     log_d("B %u %u", WiFi.status(), WiFi.isConnected());
+            //     for (uint8_t i = 0; i < 50 && WiFi.status() != WL_DISCONNECTED && WiFi.status() != WL_IDLE_STATUS && WiFi.status() != WL_NO_SHIELD; i ++)
+            //         delay(100);
+            //     if (WiFi.status() != WL_DISCONNECTED && WiFi.status() != WL_IDLE_STATUS && WiFi.status() != WL_NO_SHIELD) {
+            //         log_v("WiFi failed to disconnect, starting a scan now may crash the system, so bailing");
+            //         return false;
+            //     }
+            //     log_d("C %u %u", WiFi.status(), WiFi.isConnected());
+            // }
             log_v("Searching for WiFi networks");
-            uint16_t numfound = WiFi.scanNetworks();
+            //TODO: As another attempt to minize issues with dropepd wifi networks, this
+            //sets the max scan time per channel to half its default, but that's buried
+            //way down int he 4th parameter, so need to supply the first three (their
+            //default values are all false)
+            //TODO: Perhaps take direct control of scanning at the esp driver level.  If do that,
+            //Then can use the "Scan for a Specific AP in All Channels" suggestion from the docs
+            //TODO: It seems that the issue related to scanning causing us to drop our current network has to do
+            //with the WiFi driver attempting to change channels while scanning.  This somehow leads to a becaon
+            //timeout (whether because the STA fails to switch to the new channel & so loses the connection or
+            //because it does switch to the new channel and shouldn't have is unknown...), then the STA disconnects
+            //and we need to try to reconnect.  Need to be smarter about how/when we scan for other networks.
+            //Solution for now so we can move on (this bug impacts performance, but the crashes seem to have stopped),
+            //is to just have one WiFi network option, and not try to use both
+            uint16_t numfound = WiFi.scanNetworks(false, false, false, 150);
             log_d("D %u %u", WiFi.status(), WiFi.isConnected());
             char * found = 0;
             for (uint16_t i = 0; i < numfound; i ++) {
@@ -209,6 +216,10 @@ namespace tasks {
             // uint8_t tryUpgradeCycles = 4;
             // uint8_t nextUpgradeTry = tryUpgradeCycles;
             // ::Client * network = NULL;
+            WiFi.setAutoReconnect(false);   //TODO: This isn't ideal, but it's the best workaround so far to prevent the CPU panics that happen when
+                                            //scanning while reconnecting.  Maybe better to bypass the WiFi object and directly use the low level API?
+                                            //There's probably a lot lost by going this route, tho...
+
 
             while (true) {
                 //Check for an existing internet conection, go back to sleep if one exists (every so often, check for a better connection)

@@ -77,7 +77,8 @@ namespace tasks {
                         //     log_e("Unknown telemetry value: %s", val.pid->name);
                     }
                     log_d("JSON (#%u): %s", current, telem.toJSON().c_str());
-                    //TODO: Actuall enqueue the JSON for the next task to consume
+                    if (!xQueueSendToBack(taskHandles.queueTelem2Send, telem.toJSON().c_str(), 0))
+                        log_e("Queue full");
                 } while (current < last);
                 // vTaskDelayUntil(&last, step);  This task delays in the wait for notify function, so don't need this
             }

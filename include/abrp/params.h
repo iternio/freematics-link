@@ -8,18 +8,18 @@ namespace abrp {
 
     namespace params {
 
-        const char* PROTOCOL = "http://";
-        const char* HOST = "api.iternio.com";
-        const char* SEND_ENDPOINT = "/1/tlm/send";
+        inline const char PROTOCOL[] = "http://";
+        inline const char HOST[] = "api.iternio.com";
+        inline const char SEND_ENDPOINT[] = "/1/tlm/send";
 
-        const char* HEADER_AUTH = "Authorization";
-        const char* HEADER_AUTH_TEXT = "APIKEY "; // + config::APIKEY
+        inline const char HEADER_AUTH[] = "Authorization";
+        inline const char HEADER_AUTH_TEXT[] = "APIKEY "; // + config::APIKEY
 
-        const char* VAR_AUTH = "api_key";
-        const char* VAR_TOKEN = "token";
-        const char* VAR_TELEM = "tlm";
+        inline const char VAR_AUTH[] = "api_key";
+        inline const char VAR_TOKEN[] = "token";
+        inline const char VAR_TELEM[] = "tlm";
 
-        const char* CA_CERT =
+        inline const char CA_CERT[] =
             "-----BEGIN CERTIFICATE-----\n"
             "MIIDozCCAougAwIBAgIQD/PmFjmqPRoSZfQfizTltjANBgkqhkiG9w0BAQsFADBa\n"
             "MQswCQYDVQQGEwJJRTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJl\n"

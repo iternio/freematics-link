@@ -149,14 +149,15 @@ namespace sys {
             }
         };
 
+        //TODO: Lots of String here, is this a good idea?
         class HTTP {
         public:
             HTTP();
             virtual ~HTTP();
 
-            virtual bool configure(Client& clt);
-            virtual bool configure(Client& clt, const String& url);
-            virtual bool configure(Client& clt, const String& host, unsigned short port, const String& endpoint, bool https);
+            virtual bool configure(Client * clt);
+            virtual bool configure(Client * clt, const String& url);
+            virtual bool configure(Client * clt, const String& host, unsigned short port, const String& endpoint, bool https);
             virtual bool done();
 
             virtual bool connected();
@@ -188,6 +189,7 @@ namespace sys {
             virtual bool connect();
             virtual void disconnect();
 
+            //TODO: Clean up the below and move values to ctro init list
             Client* client = nullptr;
 
             int timeout = 5000;
