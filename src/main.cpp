@@ -1,3 +1,7 @@
+#define LOG_LOCAL_NAME "main"
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
+#include "log.h"
+
 #include "freematics.h"
 // #ifdef BOARD_HAS_PSRAM
 // #ifdef CONFIG_USING_ESPIDF
@@ -15,15 +19,18 @@
 #include "tasks.h"
 //TODO: Includes definitely need to be properly organized
 
-using namespace util;
+
+
+// using namespace util;
 
 //TODO: Make sure to properly clean up namespaces (including :: prefix to indicate global ns)
 //Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
 ::FreematicsESP32 freematics;
 
 void app() {
+    LOGI("Application started");
     Serial.begin(115200);
-    // beep(880, 50);
+    // util::beep(880, 50);
     taskHandles.taskMain = xTaskGetCurrentTaskHandle();
     util::ptl();
 
@@ -49,7 +56,7 @@ void app() {
 
     while (!ulTaskNotifyTake(pdFALSE, 100));
 
-    log_v("System boot complete");
+    LOGI("System boot complete");
     util::ptl();
     Serial.println();
 
@@ -64,7 +71,7 @@ void app() {
     util::ptl();
     delay(600);
     util::ptl();
-    xTaskCreate(tasks::telem::task, "telem", 8192, freematics.link, 13, &taskHandles.taskTelem);
+    taskHandles.taskTelem = tasks::create<tasks::telem::TelemTask>();
     util::ptl();
     delay(200);
     util::ptl();
@@ -78,12 +85,14 @@ void app() {
     util::ptl();
     delay(200);
     util::ptl();
-    delay(10000);
+    delay(600);
+    util::ptl();
+    delay(1000);
     util::ptl(true);
 
     while(true) {
-        util::ptl();
         delay(30000);
+        util::ptl();
     }
 }
 

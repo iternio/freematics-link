@@ -2,6 +2,10 @@
  * Task to initialize system
  */
 
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
+#define LOG_LOCAL_NAME "init t"
+#include "log.h"
+
 #include "freematics.h"
 
 #ifdef BOARD_HAS_PSRAM
@@ -18,6 +22,8 @@
 #include "configs.h"
 #include "util.h"
 
+
+
 namespace tasks {
     namespace init {
 
@@ -26,15 +32,15 @@ namespace tasks {
 
             //Perform initial system set up
 #if !CONFIG_AUTOSTART_ARDUINO
-            log_v("Initializing Arduino system");
+            LOGI("Initializing Arduino system");
             util::ptl();
             initArduino();
             util::ptl();
 #endif
-            log_v("Initializing Freematics system");
+            LOGI("Initializing Freematics system");
             util::ptl();
             if (!system->begin()) {
-                log_e("Freematics system failed to initialize");
+                LOGE("Freematics system failed to initialize");
                 delay(10000);
                 assert(false);
             }
@@ -42,28 +48,28 @@ namespace tasks {
 
             esp_chip_info_t cinfo;
             esp_chip_info(&cinfo);
-            log_i("Chip: %s", cinfo.model == CHIP_ESP32 ? "ESP32" : "Unknown");
-            log_i("Cores: %u", cinfo.cores);
-            log_i("Rev: %u", cinfo.revision);
-            log_i("Features: EMB %c, WiFi %c, BLE %c, BT %c",
+            LOGI("Chip: %s", cinfo.model == CHIP_ESP32 ? "ESP32" : "Unknown");
+            LOGI("Cores: %u", cinfo.cores);
+            LOGI("Rev: %u", cinfo.revision);
+            LOGI("Features: EMB %c, WiFi %c, BLE %c, BT %c",
                 cinfo.features & CHIP_FEATURE_EMB_FLASH ? 'Y' : 'N',
                 cinfo.features & CHIP_FEATURE_WIFI_BGN ? 'Y' : 'N',
                 cinfo.features & CHIP_FEATURE_BLE ? 'Y' : 'N',
                 cinfo.features & CHIP_FEATURE_BT ? 'Y' : 'N');
-            log_i("CPU: %u MHz", ESP.getCpuFreqMHz());
+            LOGI("CPU: %u MHz", ESP.getCpuFreqMHz());
             //TODO: I'm pretty sure this board is supposed to have an RTC, figure this out
             int rtc = rtc_clk_slow_freq_get();
             if (rtc)
-                log_i("RTC: %i", rtc);
-            log_i("Firmware: R%i", system->version);
-            log_i("Flash: %u B", ESP.getFlashChipSize());
-            log_i("Flash (SPI): %u B", spi_flash_get_chip_size());
-            log_i("IRAM: %u B", ESP.getHeapSize());
+                LOGI("RTC: %i", rtc);
+            LOGI("Firmware: R%i", system->version);
+            LOGI("Flash: %u B", ESP.getFlashChipSize());
+            LOGI("Flash (SPI): %u B", spi_flash_get_chip_size());
+            LOGI("IRAM: %u B", ESP.getHeapSize());
 #ifdef BOARD_HAS_PSRAM
-            log_i("PSRAM: %u B", ESP.getPsramSize() + esp_himem_get_phys_size());
-            log_i("SPIRAM: %u B", ESP.getPsramSize());
-            log_i("HiMem Phys Size: %u B", esp_himem_get_phys_size());
-            log_i("HiMem Reserved: %u B", esp_himem_reserved_area_size());
+            LOGI("PSRAM: %u B", ESP.getPsramSize() + esp_himem_get_phys_size());
+            LOGI("SPIRAM: %u B", ESP.getPsramSize());
+            LOGI("HiMem Phys Size: %u B", esp_himem_get_phys_size());
+            LOGI("HiMem Reserved: %u B", esp_himem_reserved_area_size());
 #endif
 
             //Notify main task initial system set up complete, ready to find internet connection
@@ -80,8 +86,8 @@ namespace tasks {
             time(&now);
             nowtm = gmtime(&now);
             strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
-            log_v("Current system time: %s", buf);
-            log_v("Getting time via SNTP");
+            LOGD("Current system time: %s", buf);
+            LOGI("Getting time via SNTP");
             sntp_setoperatingmode(SNTP_OPMODE_POLL);
             sntp_setservername(0, (char*)"pool.ntp.org");
             sntp_init();
@@ -91,7 +97,7 @@ namespace tasks {
             time(&now);
             nowtm = gmtime(&now);
             strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
-            log_v("System time updated to: %s", buf);
+            LOGI("System time updated to: %s", buf);
 
             //Notify main task that time is set and it can proceed
             xTaskNotifyGive(taskHandles.taskMain);
@@ -99,7 +105,7 @@ namespace tasks {
             //Initialization done, delete task
             taskHandles.taskInit = NULL;
             vTaskDelete(NULL);
-            log_e("Task failed to delete (shouldn't ever get here)");
+            LOGE("Task failed to delete (shouldn't ever get here)");
         }
 
     }

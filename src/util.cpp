@@ -1,3 +1,5 @@
+#include "log.h"
+
 #include "freematics.h"
 #ifdef BOARD_HAS_PSRAM
 #ifdef CONFIG_USING_ESPIDF
@@ -10,6 +12,8 @@
 #include <cmath>
 #include "util.h"
 #include "tasks/common.h"
+
+
 
 namespace util {
 
@@ -76,7 +80,7 @@ namespace util {
     void ptl(bool all) {
         listtaskticks = xTaskGetTickCount();
         listtaskcount = uxTaskGetSystemState(listtaskstatus, 30, NULL);
-        log_d("Ticks   \tHandle  \tName      \tS\tNo\tBP\tCP\tTime    \tHWM  \tCPU");
+        LOGV("Ticks   \tHandle  \tName      \tS\tNo\tBP\tCP\tTime    \tHWM  \tCPU");
         for (listtaskidx = 0; listtaskidx < listtaskcount; listtaskidx++) {
             if (all || listtaskstatus[listtaskidx].xHandle == taskHandles.taskMain ||
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskObd ||
@@ -84,7 +88,7 @@ namespace util {
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskNet ||
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskInit ||
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskSend) {
-                log_d("%8u\t%08X\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8lu\t%5u\t%2d",
+                LOGV("%8u\t%p\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8u\t%5u\t%2d",
                     listtaskticks,
                     listtaskstatus[listtaskidx].xHandle,
                     listtaskstatus[listtaskidx].pcTaskName,
@@ -100,7 +104,7 @@ namespace util {
         }
     }
 #else
-#define ptl()
+    void ptl(bool all) {}
 #endif
 
     //The below parser generally assumes the formula is well formed and free of syntax errors
@@ -129,13 +133,13 @@ namespace util {
 
     long double FormulaParser::expression() {
         // Process an expression starting at the bottom of the above list
-        // log_d("expression");
+        LOGV("expression");
         return ternary();
     }
 
     long double FormulaParser::ternary() {
         // Process a ternary expression: <term> [ ? <term> : <term> ]
-        // log_d("ternary");
+        LOGV("ternary");
         long double condition = logical();
         if (peek() != '?')
             return condition;
@@ -153,35 +157,35 @@ namespace util {
 
     long double FormulaParser::logical() {
         // Process a logical expression: <term> [ ( || ; && ) <term> ]
-        // log_d("logical");
+        LOGV("logical");
         //TODO: Figure out logical & bitwise operations...
         return bitwise();
     }
 
     long double FormulaParser::bitwise() {
         // Process a bitwise expression: <term> [ ( | ; & ; ^ ) <term> ]
-        // log_d("bitwise");
+        LOGV("bitwise");
         //TODO: Figure out logical & bitwise operations...
         return comparison();
     }
 
     long double FormulaParser::comparison() {
         // Process a comparison expression: <term> [ ( == ; != ; <= ; >= ; < ; > ) <term> ]
-        // log_d("comparison");
+        LOGV("comparison");
         //TODO: Figure out logical & bitwise operations...
         return shift();
     }
 
     long double FormulaParser::shift() {
         // Process a bitshift expression: <term> [ ( << ; >> ) <term> ]
-        // log_d("shift");
+        LOGV("shift");
         //TODO: Figure out logical & bitwise operations...
         return additive();
     }
 
     long double FormulaParser::additive() {
         // Process an add or subtract expression: <term> [ ( + ; - ) <term> ]
-        // log_d("additive");
+        LOGV("additive");
         long double result = multipicative();
         while (true) {
             switch (peek()) {
@@ -199,7 +203,7 @@ namespace util {
 
     long double FormulaParser::multipicative() {
         // Process a multiply or divide expression: <term> [ ( * ; / ; % ) <term> ]
-        // log_d("multipicative");
+        LOGV("multipicative");
         long double result = unary();
         while (true) {
             switch (peek()) {
@@ -221,7 +225,7 @@ namespace util {
 
     long double FormulaParser::unary() {
         // Process a unary operator expression: [ ( - ; ! ; ~ ) ] <term>
-        // log_d("unary");
+        LOGV("unary");
         switch (peek()) {
             case '-':
                 get(); // Consume -
@@ -240,7 +244,7 @@ namespace util {
 
     long double FormulaParser::exponentiation() {
         // Process an exponent expression: <term> [ ^ <term> ]
-        // log_d("exponentiation");
+        LOGV("exponentiation");
         long double result = value();
         while (peek() == '^') {
             get();  // Consume ^
@@ -251,7 +255,7 @@ namespace util {
 
     long double FormulaParser::value() {
         // Parse a direct value, either a number or a substitution, or kick back to the top of the list for a parenthetical expression
-        // log_d("value");
+        LOGV("value");
         if (peek() >= '0' && peek() <= '9') {
             // Value is a number constant
             return number();
@@ -270,68 +274,68 @@ namespace util {
 
     long double FormulaParser::substitution() {
         // Process a data substution { [ ( u ; s ) : ] 0-9.* [ : 0-9.* ] }
-        // log_d("substitution");
+        LOGV("substitution");
         get(); // consume opening {
-        // log_d("%s",formula);
+        LOGV("%s",formula);
         char type = 0;
         if (peek() > '9') {
             type = get();
             while (get() != ':');
         }
-        // log_d("%c", type ? type : ' ');
+        LOGV("%c", type ? type : ' ');
         // Assuming data is an array of hex characters (if it's raw bytes, fix this)
         int from = number(), to;
-        // log_d("%u", from);
+        LOGV("%u", from);
         if (get() == ':') { // consume closing } or : separator
             to = number();
-            // log_d("%u", to);
+            LOGV("%u", to);
             get(); // consume closing }
             if (!type && to < 8) {
-                // log_d("1 bit");
+                LOGV("1 bit");
                 uint8_t val;
                 std::from_chars(&data[from*2], &data[from*2+2], val, 16);
-                // log_d("%u", val);
+                LOGV("%u", val);
                 return (val & (1 << to)) >> to;
             }
         } else {
             to = from + 1;
-            // log_d("%u", to);
+            LOGV("%u", to);
         }
-        // log_d("%i", to - from);
+        LOGV("%i", to - from);
         switch (to - from) {
         case 1: {
-            // log_d("8 bit");
+            LOGV("8 bit");
             uint8_t val;
             std::from_chars(&data[from*2], &data[to*2], val, 16);
-            // log_d("%u", val);
+            LOGV("%u", val);
             if (type == 's')
                 return -(int8_t)(~val+1);
             return val;
         }
         case 2: {
-            // log_d("16 bit");
+            LOGV("16 bit");
             uint16_t val;
             std::from_chars(&data[from*2], &data[to*2], val, 16);
-            // log_d("%u", val);
+            LOGV("%u", val);
             if (type == 's')
                 return -(int16_t)(~val+1);
             return val;
         }
         case 3:
         case 4: {
-            // log_d("32 bit");
+            LOGV("32 bit");
             uint32_t val;
             std::from_chars(&data[from*2], &data[to*2], val, 16);
-            // log_d("%u", val);
+            LOGV("%u", val);
             if (type == 's')
                 return -(int32_t)(~val+1);
             return val;
         }
         default: {
-            // log_d("64 bit");
+            LOGV("64 bit");
             uint64_t val;
             std::from_chars(&data[from*2], &data[to*2], val, 16);
-            // log_d("%u", val);
+            LOGV("%llu", val);
             if (type == 's')
                 return -(int64_t)(~val+1);
             return val;
@@ -341,7 +345,7 @@ namespace util {
 
     long double FormulaParser::number() {
         // Process a number constant: 0-9.* [ \. 0-9.* ]
-        // log_d("number");
+        LOGV("number");
         long double result = get() - '0';
         while (peek() >= '0' && peek() <= '9')
             result = result * 10 + (get() - '0');
@@ -351,7 +355,7 @@ namespace util {
             while (peek() >= '0' && peek() <= '9')
                 result += (get() - '0') / pow(10, recall());
         }
-        // log_d("%Lf", result);
+        LOGV("%Lf", result);
         return result;
     }
 

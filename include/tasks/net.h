@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "tasks/common.h"
 #include "system/network.h"
 
 namespace tasks {

@@ -4,6 +4,10 @@
 
 #pragma once
 
+// #define LOG_LOCAL_NAME "tasks"
+// #define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_DEBUG
+#include "log.h"
+
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -64,7 +68,7 @@ namespace tasks {
     // const bool Task::deleteTaskWhenRunReturns = false;
 
     template <class T> void run(void * param = NULL) {
-        log_v("Starting Task: %s", T::name);
+        LOGI("Starting Task: %s", T::name);
         T t;
         while (!T::deleteTaskWhenRunReturns)
             t.run();
@@ -74,7 +78,7 @@ namespace tasks {
     // template <class T> /* std::enable_if_t<std::is_base_of_v<Task, T>, */ TaskHandle_t/* > */ create(void * param = NULL);
 
     template <class T> TaskHandle_t create(void * param = NULL) {
-        log_v("Creating Task: %s (%u B, Pri %u", T::name, T::memory, T::priority);
+        LOGD("Creating Task: %s (%u B, Pri %u)", T::name, T::memory, T::priority);
         TaskHandle_t h;
         xTaskCreate(run<T>, T::name, T::memory, param, T::priority, &h);
         return h;
@@ -83,3 +87,7 @@ namespace tasks {
 }
 
 inline tasks::Handles taskHandles;
+
+// #define LOG_TASK_REDIRECT(level, ...) ESP_LOG ## level (__VA_ARGS__)
+// #define LOG_TASK_CONVERT(level, name, ...) LOG_TASK_REDIRECT(level, name, __VA_ARGS__)
+// #define log_task(...) LOG_TASK_CONVERT(TASK_LOG_LEVEL, TASK_LOG_NAME, __VA_ARGS__)

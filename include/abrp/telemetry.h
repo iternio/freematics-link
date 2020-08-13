@@ -4,6 +4,10 @@
 
 #pragma once
 
+// #define LOG_LOCAL_NAME "telem"
+// #define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
+#include "log.h"
+
 // #include <string.h>
 #include <ArduinoJson.h>    //TODO: Do we need this? we use very little of it.  Maybe cJSON instead?
 //TODO: Remove use of Strings and use char arrays;
@@ -55,7 +59,7 @@ namespace abrp {
 
             String toJSON() {
                 String ret;
-                // log_d("Serializing");
+                LOGV("Serializing");
                 //TODO: temporarily commenting this out to resovle build issues
                 // ret = "{}";
                 StaticJsonDocument<JSON_OBJECT_SIZE(16)> doc;
@@ -96,7 +100,7 @@ namespace abrp {
                 if (car_model.exists())
                     doc["car_model"] = car_model();
                 serializeJson(doc, ret);
-                // log_d("Serialized: %s", ret.c_str());
+                LOGD("Serialized: %s", ret.c_str());
                 return ret;
             }
         };

@@ -2,10 +2,16 @@
  * Implementation for clients using network interfaces of Freematics in a standard interface
  */
 
+#define LOG_LOCAL_NAME "net"
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
+#include "log.h"
+
 #include "system/network.h"
 #include "configs.h"
 
 #include "freematics.h"
+
+
 
 namespace sys {
     namespace net {

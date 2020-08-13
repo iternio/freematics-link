@@ -2,63 +2,65 @@
  * Generic HTTP(S) client
  */
 
+#define LOG_LOCAL_NAME "http"
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
+#include "log.h"
+
 #include "system/http.h"
 
 #include "freematics.h"
 
-#define DRY_RUN
+
 
 namespace sys {
     namespace clt {
 
         unsigned short urlEncode(char* dst, char* src) {
-            // log_v("\n\n");
-            // log_v("Unencoded: %s", src);
+            LOGV("Unencoded: %s", src);
             const char special[] = "\"#$%&+,/:;=<>?@[]\\^~`{}| \t\n";
             const char hex[] = "0123456789ABCDEF";
             const char* s = src;
             char code[] = "%00";
             char* c = strpbrk(src, special);
             while (c) {
-                // log_v("%X -> %X (%d)", s, c, c - s);
-                // log_v("Text: %.*s", c - s, s);
+                LOGV("%p -> %p (%d)", (void*)s, (void*)c, c - s);
+                LOGV("Text: %.*s", c - s, s);
                 if (c - s)
                     strncat(dst, s, c - s);
-                // log_v("Char: %c", *c);
-                // log_v("Index 1: %d", (*c >> 4) & 0x0F);
-                // log_v("Digit 1: %c", hex[(*c >> 4) & 0x0F]);
-                // log_v("Index 2: %d", *c & 0x0F);
-                // log_v("Digit 2: %c", hex[*c & 0x0F]);
+                LOGV("Char: %c", *c);
+                LOGV("Index 1: %d", (*c >> 4) & 0x0F);
+                LOGV("Digit 1: %c", hex[(*c >> 4) & 0x0F]);
+                LOGV("Index 2: %d", *c & 0x0F);
+                LOGV("Digit 2: %c", hex[*c & 0x0F]);
                 code[1] = hex[(*c >> 4) & 0x0F];
                 code[2] = hex[*c & 0x0F];
-                // log_v("Code: %s", code);
+                LOGV("Code: %s", code);
                 strcat(dst, code);
                 s = c + 1;
                 c = strpbrk(s, special);
             }
             strcat(dst, s);
-            // log_v("Encoded: %s", dst);
-            // log_v("\n\n");
+            LOGD("Encoded: %s", dst);
             return strlen(dst);
         }
 
         Parameters::Parameters(const String& p) : purpose(p) {};
 
         bool Parameters::add(const String& key, const String& value) {
-            // log_v("add(%s, %s)", key.c_str(), value.c_str());
+            LOGV("add(%s, %s)", key.c_str(), value.c_str());
             if (count == MAX_COUNT)
                 return false;
             params[count].key = key;
             params[count].value = value;
             params[count].key.trim();
             params[count].value.trim();
-            // log_v("Adding to %s: %s=%s", purpose.c_str(), params[count].key.c_str(), params[count].value.c_str());
+            LOGD("Adding to %s: %s=%s", purpose.c_str(), params[count].key.c_str(), params[count].value.c_str());
             count ++;
             return true;
         }
 
         bool Parameters::add(const String& keyvalue) {
-            // log_v("add(%s)", keyvalue.c_str());
+            LOGV("add(%s)", keyvalue.c_str());
             int colon = keyvalue.indexOf(':');
             int equal = keyvalue.indexOf('=');
             int split = min(colon < 0 ? INT_MAX : colon, equal < 0 ? INT_MAX : equal);
@@ -68,18 +70,18 @@ namespace sys {
         }
 
         bool Parameters::set(const String& key, const String& value) {
-            // log_v("set(%s, %s)", key.c_str(), value.c_str());
+            LOGV("set(%s, %s)", key.c_str(), value.c_str());
             short idx = find(key);
             if (idx < 0)
                 return add(key, value);
             params[idx].value = value;
             params[idx].value.trim();
-            // log_v("Set in %s: %s=%s", purpose.c_str(), params[idx].key.c_str(), params[idx].value.c_str());
+            LOGD("Set in %s: %s=%s", purpose.c_str(), params[idx].key.c_str(), params[idx].value.c_str());
             return true;
         }
 
         bool Parameters::set(const String& keyvalue) {
-            // log_v("set(%s)", keyvalue.c_str());
+            LOGV("set(%s)", keyvalue.c_str());
             int colon = keyvalue.indexOf(':');
             int equal = keyvalue.indexOf('=');
             int split = min(colon < 0 ? INT_MAX : colon, equal < 0 ? INT_MAX : equal);
@@ -89,7 +91,7 @@ namespace sys {
         }
 
         bool Parameters::remove(const String& key) {
-            // log_v("%s", key.c_str());
+            LOGV("%s", key.c_str());
             short idx = find(key);
             if (idx < 0)
                 return false;
@@ -98,7 +100,7 @@ namespace sys {
         }
 
         String Parameters::get(const String& key) {
-            // log_v("%s", key.c_str());
+            LOGV("%s", key.c_str());
             short idx = find(key);
             if (idx < 0)
                 return "";
@@ -106,12 +108,12 @@ namespace sys {
         }
 
         bool Parameters::has(const String& key) {
-            // log_v("%s", key.c_str());
+            LOGV("%s", key.c_str());
             return find(key) >= 0;
         }
 
         short Parameters::find(const String& key) {
-            // log_v("%s", key.c_str());
+            LOGV("%s", key.c_str());
             String temp = key;
             temp.trim();
             for (short idx = 0; idx < count; idx ++) {
@@ -142,7 +144,7 @@ namespace sys {
         }
 
         bool HTTP::configure(Client * clt, const String& hst, unsigned short prt, const String& endp, bool s) {
-            log_v("Protocol: http%s Host: %s Port: %u Endpoint: %s", s ? "s" : "", hst.c_str(), prt, endp.c_str());
+            LOGD("Protocol: http%s Host: %s Port: %u Endpoint: %s", s ? "s" : "", hst.c_str(), prt, endp.c_str());
             return configure(clt) && setUrl(hst, prt, endp, s);
         }
 
@@ -157,7 +159,7 @@ namespace sys {
         }
 
         bool HTTP::get() {
-            // log_v("Adding headers");
+            LOGV("Adding headers");
             reqHeaders.set("User-Agent", agent);
             reqHeaders.set("Connection", reuse ? "keep-alive" : "close");
             reqHeaders.set("Host", host);
@@ -182,31 +184,31 @@ namespace sys {
                 request.headers += reqHeaders.params[idx].key + ": " + reqHeaders.params[idx].value + "\r\n";
             request.raw = request.method + ' ' + request.url + ' ' + request.http + "\r\n" + request.headers + "\r\n";
             request.size = request.raw.length();
-            // log_v("Request: (%u B)\n%s", request.size, request.raw.c_str());
+            LOGI("Request: (%u B)\n%s", request.size, request.raw.c_str());
             bool ret = send((unsigned char *)request.raw.c_str(), request.size);
-            // log_v("Response: (%u B)\n%s", response.size, response.raw.c_str());
-            // log_v("Details:\nProtocol: %s\nCode: %i %s\nMethod: %s\nUrl: %s\nHeaders:\n%s\nBody:\n%s\n",
-            //     response.http.c_str(), response.code, response.codetext.c_str(), response.method.c_str(),
-            //     response.url.c_str(), response.headers.c_str(), response.body.c_str());
-            // for (short idx = 0;  idx < resHeaders.count; idx ++)
-            //     log_v("Header: %s = %s", resHeaders.params[idx].key.c_str(), resHeaders.params[idx].value.c_str());
+            LOGI("Response: (%u B)\n%s", response.size, response.raw.c_str());
+            LOGV("Details:\nProtocol: %s\nCode: %i %s\nMethod: %s\nUrl: %s\nHeaders:\n%s\nBody:\n%s\n",
+                response.http.c_str(), response.code, response.codetext.c_str(), response.method.c_str(),
+                response.url.c_str(), response.headers.c_str(), response.body.c_str());
+            for (short idx = 0;  idx < resHeaders.count; idx ++)
+                LOGV("Header: %s = %s", resHeaders.params[idx].key.c_str(), resHeaders.params[idx].value.c_str());
             return ret;
         }
 
         bool HTTP::post() {
-            log_e("HTTP POST not implemented!");
+            LOGE("HTTP POST not implemented!");
             return 0;
         }
 
         bool HTTP::parse(char c) {
-            // Serial.printf("parse: %i\n", c);
+            LOGV("parse: %i\n", c);
             static unsigned short phase = 0;
             if (!c) {
                 //New response being received, prepare to receive it
                 response.clear();
                 resHeaders.count = 0;
                 phase = 0;
-                // log_v("Initializing parser (%u)", phase);
+                LOGV("Initializing parser (%u)", phase);
                 parseBody();
                 return true;
             }
@@ -245,9 +247,9 @@ namespace sys {
                 } else if (response.headers.endsWith("\r\n")) {
                     int s = response.headers.lastIndexOf("\r\n", response.headers.length() - 3);
                     s = (s < 0 ? 0 : s + 2);
-                    // log_v("Found header (%u -> %u) - %s", s, response.headers.length() - 1,
-                    //     response.headers.substring(s, response.headers.length() - 2).c_str()
-                    // );
+                    LOGV("Found header (%u -> %u) - %s", s, response.headers.length() - 1,
+                        response.headers.substring(s, response.headers.length() - 2).c_str()
+                    );
                     //TODO: This assumes one of each header, but some headers can have multiple (like Set-Cookie)
                     resHeaders.set(response.headers.substring(s, response.headers.length() - 2).c_str());
                 }
@@ -264,13 +266,13 @@ namespace sys {
         }
 
         bool HTTP::parseBody(char c) {
-            // Serial.printf("parseBody: %i\n", c);
+            LOGV("parseBody: %i\n", c);
             static unsigned short mode = 0;
             static short len = 0;
             if (!c) {
                 mode = 0;
                 len = 0;
-                // log_v("Initializing body parser (%u, %i)", mode, len);
+                LOGV("Initializing body parser (%u, %i)", mode, len);
                 return true;
             }
             while (!mode) {
@@ -278,21 +280,21 @@ namespace sys {
                 if (request.method == "HEAD" || response.code < HTTP_CODE_OK ||
                     response.code == HTTP_CODE_NO_CONTENT || response.code == HTTP_CODE_NOT_MODIFIED) {
                     //Response has no body
-                    log_v("No body to read");
+                    LOGV("No body to read");
                     return false;
                     break;
                 }
                 String hdr = resHeaders.get("Transfer-Encoding");
                 if (hdr.equalsIgnoreCase("identity")) {
                     //Chunked body
-                    log_v("Chunked body");
+                    LOGV("Chunked body");
                     mode = 1;
                     break;
                 }
                 hdr = resHeaders.get("Content-Length");
                 if (hdr.length()) {
                     //Body length provided
-                    log_v("Fixed length body");
+                    LOGV("Fixed length body");
                     mode = 4;
                     len = hdr.toInt();
                     break;
@@ -300,11 +302,11 @@ namespace sys {
                 hdr = resHeaders.get("Content-Type");
                 if (hdr.substring(0, 10).equalsIgnoreCase("multipart/")) {
                     //Multipart (like form data), Note - not implemented
-                    log_v("Multipart body");
+                    LOGV("Multipart body");
                     mode = 5;
                     break;
                 }
-                log_v("Unknown body");
+                LOGD("Unknown body");
                 mode = 6;
             }
             switch (mode) {
@@ -334,7 +336,7 @@ namespace sys {
                 len --;
                 return (len > 0);
             case 5: //Multipart data
-                log_w("Multipart response parsing not implemented");
+                LOGW("Multipart response parsing not implemented");
                 return false;
             case 6: //Unknown length, read until disconnected
                 response.body += c;
@@ -344,7 +346,7 @@ namespace sys {
         }
 
         bool HTTP::setUrl(const String& url) {
-            log_v("Parsing url %s", url.c_str());
+            LOGV("Parsing url %s", url.c_str());
 
             short sep, colon, slash, qmark, amp, equal;
             bool https;
@@ -394,7 +396,7 @@ namespace sys {
                 qmark ++;
                 equal = url.indexOf("=", qmark);
                 amp = url.indexOf("&", qmark);
-                // log_v("%d %d %d", qmark, equal, amp);
+                LOGV("%d %d %d", qmark, equal, amp);
                 urlParams.add(url.substring(qmark, equal), (amp < 0 ? url.substring(equal + 1) : url.substring(equal + 1, amp)));
                 qmark = amp;
             }
@@ -430,74 +432,66 @@ namespace sys {
         bool HTTP::send(unsigned char* req, unsigned int size) {
             static int failures = 0;
             if (!connected()) {
-                log_v("Client? %c, Connected? %d  Available? %d",
+                LOGD("Client? %c, Connected? %d  Available? %d",
                     (bool)client ? 'Y' : 'N', client->connected(), client->available());
-                log_v("Establishing connection");
+                LOGV("Establishing connection");
                 if (!connect() || !connected()) {
-                    log_v("Failed to connect");
+                    LOGI("Failed to connect");
                     return false;
                 }
             } else if (client->available()) {
-                log_v("Clearing received data (%u B)", client->available());
+                LOGD("Clearing received data (%u B)", client->available());
                 client->flush();
             }
             if (request.raw.length() == 0) {
-                log_v("No request to send");
+                LOGI("No request to send");
                 return false;
             }
-#ifdef DRY_RUN
-            unsigned int s = size;
-            log_v("Request:\n%s", req);
-            return true;
-#else
             unsigned int s = client->write(req, size);
-#endif
-            log_v("Sent %u, expected %u", s, size);
+            LOGD("Sent %u, expected %u", s, size);
             if (s < size) {
-                log_v("Failed to send data");
+                LOGW("Failed to send data");
                 if (++failures == 3) {
-                    log_v("Three consecutive failures, disconnecting");
+                    LOGW("Three consecutive failures, disconnecting");
                     disconnect();
                 }
                 return false;
             }
-            log_v("Request sent");
+            LOGV("Request sent");
             if (!receive()) {
-                log_v("Failed to process response");
+                LOGW("Failed to process response");
                 if (++failures == 3) {
-                    log_v("Three consecutive failures, disconnecting");
+                    LOGW("Three consecutive failures, disconnecting");
                     disconnect();
                 }
                 return false;
             }
-            log_v("Response processed");
+            LOGV("Response processed");
             failures = 0;
             return true;
         }
 
         unsigned int HTTP::receive() {
-            log_v("Receiving data");
+            LOGV("Receiving data");
             unsigned int size = 0;
             if (!connected()) {
-                log_v("No connection to receive from");
+                LOGI("No connection to receive from");
                 return 0;
             }
             if (!parse()) {
-                log_v("Not ready to parse");
+                LOGI("Not ready to parse");
                 return 0;
             }
             unsigned long t = millis();
             while (true) {
                 if (!connected()) {
-                    log_v("Lost connection while receiving data");
+                    LOGW("Lost connection while receiving data");
                     return 0;
                 }
                 int avail = client->available();
-                // if (avail % 100 == 0)
-                //     log_v("Available: %i", avail);
                 if (!avail) {
                     if (millis() - t > timeout) {
-                        log_v("Timed out while receiving data");
+                        LOGI("Timed out while receiving data");
                         return 0;
                     }
                     delay(timeout / 10);
@@ -505,7 +499,7 @@ namespace sys {
                 }
                 size ++;
                 if (!parse(client->read())) {
-                    log_v("HTTP parsing complete (%u B)", size);
+                    LOGV("HTTP parsing complete (%u B)", size);
                     return size;
                 }
                 t = millis();
@@ -514,33 +508,33 @@ namespace sys {
 
         bool HTTP::connect() {
             if (connected()) {
-                log_v("Already connected");
+                LOGV("Already connected");
                 client->flush();
                 return false;
             }
             if (!client) {
-                log_v("No valid client to connect");
+                LOGE("No valid client to connect");
                 return false;
             }
             //TODO: generic client has no timeout, but WiFiClient does...  Ah, Stream does, too!
             if (!client->connect(host.c_str(), port)) {
-                log_v("Failed to connect to host");
+                LOGE("Failed to connect to host");
                 return false;
             }
-            log_v("Connected to %s", host.c_str());
+            LOGI("Connected to %s", host.c_str());
             return connected();
         }
 
         void HTTP::disconnect() {
             if (!connected()) {
-                log_v("Already disconnected");
+                LOGD("Already disconnected");
                 return;
             }
             if (reuse)
-                log_v("Reuse is set, forcibly disconnecting");
+                LOGI("Reuse is set, forcibly disconnecting");
             client->flush();
             client->stop();
-            log_v("Connection terminated");
+            LOGI("Connection terminated");
         }
 
     }

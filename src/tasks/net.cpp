@@ -2,6 +2,10 @@
  * Task to maintain network connections
  */
 
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_VERBOSE
+#define LOG_LOCAL_NAME "net t"
+#include "log.h"
+
 #include "freematics.h"
 #include <Client.h>
 
@@ -9,6 +13,8 @@
 #include "tasks/net.h"
 #include "configs.h"
 #include "system/network.h"
+
+
 
 //TODO: It's looking more and more like I should directly make use of the ESP wifi driver rather than the
 //Arduino style WiFi wrapper object, due to some of the constraints seen when scanning.  There's likely
@@ -44,7 +50,7 @@ namespace tasks {
         NetworkTask::NetworkTask(void * p) : Task(p), network(NULL), hasNetwork(false), currentNetwork(UINT8_MAX), hasInternet(false) {}
 
         bool NetworkTask::findWiFiNetwork(const char * const ssid) {
-            log_d("A %u %u", WiFi.status(), WiFi.isConnected());
+            LOGV("A %u %u", WiFi.status(), WiFi.isConnected());
             //This is a workaround.  If scanNetworks is called while the wifi task is still attempting to reconect
             //to a lost connection, the CPU will panic.  It's supposed to just fail and return a warning, but for
             //some reason doesn't.  If we still have a current network connection to a valid AP, the scan will work,
@@ -53,18 +59,18 @@ namespace tasks {
             //reconnect, so we should call disconnect to make sure it stops before scanning for networks (hopefully)
             // if ((hasNetwork && WiFi.status() != WL_CONNECTED) ||
             //     (!hasNetwork && WiFi.status() != WL_DISCONNECTED && WiFi.status() != WL_IDLE_STATUS && WiFi.status() != WL_NO_SHIELD)) {
-            //     log_v("First, disconnecting from WiFi");
+            //     LOGD("First, disconnecting from WiFi");
             //     WiFi.disconnect();
-            //     log_d("B %u %u", WiFi.status(), WiFi.isConnected());
+            //     LOGV("B %u %u", WiFi.status(), WiFi.isConnected());
             //     for (uint8_t i = 0; i < 50 && WiFi.status() != WL_DISCONNECTED && WiFi.status() != WL_IDLE_STATUS && WiFi.status() != WL_NO_SHIELD; i ++)
             //         delay(100);
             //     if (WiFi.status() != WL_DISCONNECTED && WiFi.status() != WL_IDLE_STATUS && WiFi.status() != WL_NO_SHIELD) {
-            //         log_v("WiFi failed to disconnect, starting a scan now may crash the system, so bailing");
+            //         LOGI("WiFi failed to disconnect, starting a scan now may crash the system, so bailing");
             //         return false;
             //     }
-            //     log_d("C %u %u", WiFi.status(), WiFi.isConnected());
+            //     LOGV("C %u %u", WiFi.status(), WiFi.isConnected());
             // }
-            log_v("Searching for WiFi networks");
+            LOGI("Searching for WiFi networks");
             //TODO: As another attempt to minize issues with dropepd wifi networks, this
             //sets the max scan time per channel to half its default, but that's buried
             //way down int he 4th parameter, so need to supply the first three (their
@@ -79,15 +85,15 @@ namespace tasks {
             //Solution for now so we can move on (this bug impacts performance, but the crashes seem to have stopped),
             //is to just have one WiFi network option, and not try to use both
             uint16_t numfound = WiFi.scanNetworks(false, false, false, 150);
-            log_d("D %u %u", WiFi.status(), WiFi.isConnected());
+            LOGV("D %u %u", WiFi.status(), WiFi.isConnected());
             char * found = 0;
             for (uint16_t i = 0; i < numfound; i ++) {
                 found = (char *)((wifi_ap_record_t *)WiFi.getScanInfoByIndex(i))->ssid;
-                log_v("Nework %u: %s", i, found);
+                LOGV("Nework %u: %s", i, found);
                 if (strcmp(found, ssid) == 0)
                     return true;
             }
-            log_d("E %u %u", WiFi.status(), WiFi.isConnected());
+            LOGV("E %u %u", WiFi.status(), WiFi.isConnected());
             return false;
         }
 
@@ -95,87 +101,87 @@ namespace tasks {
             uint8_t tries = 0;
             bool found = false;
             const uint8_t maxtries = 3; //TODO: Make configurable
-            log_v("Attempting to connect to WiFi network %s", ssid);
+            LOGI("Attempting to connect to WiFi network %s", ssid);
             while (!(WiFi.isConnected() && strcmp(WiFi.SSID().c_str(), ssid) == 0) && tries++ < maxtries) {
-                log_d("1 %u %u", WiFi.status(), WiFi.isConnected());
+                LOGV("1 %u %u", WiFi.status(), WiFi.isConnected());
                 if (!found) {
-                    log_v("Looking for networks");
+                    LOGD("Looking for networks");
                     if (!findWiFiNetwork(ssid)) {
-                        log_d("2 %u %u", WiFi.status(), WiFi.isConnected());
-                        log_v("Network not found");
+                        LOGV("2 %u %u", WiFi.status(), WiFi.isConnected());
+                        LOGD("Network not found");
                         delay(1000);
-                        log_v("Retrying");
+                        LOGD("Retrying");
                         continue;
                     }
-                    log_d("3 %u %u", WiFi.status(), WiFi.isConnected());
+                    LOGV("3 %u %u", WiFi.status(), WiFi.isConnected());
                     found = true;
-                    log_v("Network found, trying to connect");
+                    LOGD("Network found, trying to connect");
                     WiFi.disconnect();
-                    log_d("4 %u %u", WiFi.status(), WiFi.isConnected());
+                    LOGV("4 %u %u", WiFi.status(), WiFi.isConnected());
                     delay(500);
-                    log_d("5 %u %u", WiFi.status(), WiFi.isConnected());
+                    LOGV("5 %u %u", WiFi.status(), WiFi.isConnected());
                 }
-                log_d("6 %u %u", WiFi.status(), WiFi.isConnected());
+                LOGV("6 %u %u", WiFi.status(), WiFi.isConnected());
                 WiFi.begin(ssid, password);
-                log_d("7 %u %u", WiFi.status(), WiFi.isConnected());
+                LOGV("7 %u %u", WiFi.status(), WiFi.isConnected());
                 WiFi.waitForConnectResult();
-                log_d("8 %u %u", WiFi.status(), WiFi.isConnected());
+                LOGV("8 %u %u", WiFi.status(), WiFi.isConnected());
                 if (!(WiFi.isConnected() && strcmp(WiFi.SSID().c_str(), ssid) == 0) && tries < maxtries) {
-                    log_d("9 %u %u", WiFi.status(), WiFi.isConnected());
-                    log_v("Failed to connect");
+                    LOGV("9 %u %u", WiFi.status(), WiFi.isConnected());
+                    LOGD("Failed to connect");
                     delay(5000);
-                    log_v("Retrying");
-                    log_d("0 %u %u", WiFi.status(), WiFi.isConnected());
+                    LOGD("Retrying");
+                    LOGV("0 %u %u", WiFi.status(), WiFi.isConnected());
                 }
             }
             if (!(WiFi.isConnected() && strcmp(WiFi.SSID().c_str(), ssid) == 0)) {
-                log_v("Failed to connect to %s", ssid);
+                LOGI("Failed to connect to %s", ssid);
                 return false;
             }
-            log_v("Connected to %s", ssid);
+            LOGI("Connected to %s", ssid);
             return true;
         }
 
         bool NetworkTask::connectToCellNetwork() {
-            log_d("Cell connection not implemented");
+            LOGE("Cell connection not implemented");
             return false;
         }
 
         bool NetworkTask::connectToBluetoothDevice() {
-            log_e("Bluetooth connection not implemented");
+            LOGE("Bluetooth connection not implemented");
             return false;
         }
 
         bool NetworkTask::tryConnections() {
             uint8_t max = (hasNetwork ? currentNetwork : numPriorities);
-            log_v("Stepping through connection priorities up to index %u", max);
+            LOGD("Stepping through connection priorities up to index %u", max);
             for (uint8_t i = 0; i < max; i ++) {
-                log_v("Trying priority index %u: %u", i, priorities[i]);
+                LOGD("Trying priority index %u: %u", i, priorities[i]);
                 switch(priorities[i]) {
                 case sys::net::NETWORK_WIFI:
-                    log_v("Trying to connect to primary WiFI network");
+                    LOGD("Trying to connect to primary WiFI network");
                     if (!connectToWiFiNetwork(configs::SSID, configs::PASSWORD))
                         continue;
                     break;
                 case sys::net::NETWORK_WIFI_SECONDARY:
-                    log_v("Trying to connect to secondary WiFI network");
+                    LOGD("Trying to connect to secondary WiFI network");
                     if (!connectToWiFiNetwork(configs::SSID_SECONDARY, configs::PASSWORD_SECONDARY))
                         continue;
                     break;
                 case sys::net::NETWORK_SIM:
-                    log_v("Trying to connect to cellular network");
+                    LOGD("Trying to connect to cellular network");
                     //TODO: Impelement SimClient
                     if (!connectToCellNetwork())
                         continue;
                     break;
                 case sys::net::NETWORK_BT:
-                    log_v("Trying to connect to Bluetooth device");
+                    LOGD("Trying to connect to Bluetooth device");
                     //TODO: Implement BluetoothClient
                     if (!connectToBluetoothDevice())
                         continue;
                     break;
                 default:
-                    log_v("Unknown type of network");
+                    LOGW("Unknown type of network");
                     continue;
                 }
                 currentNetwork = i;
@@ -187,20 +193,20 @@ namespace tasks {
         bool NetworkTask::checkInternetConnection() {
             // const char * const testServer = "api.iternio.com";
             // const uint16_t testPort = 80;
-            log_v("Checking for internet connection");
+            LOGI("Checking for internet connection");
             if (!network) {
-                log_v("No network to try");
+                LOGI("No network to try");
                 return false;
             }
             if (network->connected()) {
-                log_v("Client is already connected");
+                LOGI("Client is already connected");
                 return true;
             }
             if (network->connect("api.iternio.com", 80)) {
-                log_v("Connected to the internet successfully");
+                LOGI("Connected to the internet successfully");
                 return true;
             }
-            log_v("Could not connect to the internet");
+            LOGI("Could not connect to the internet");
             return false;
         }
 
@@ -225,7 +231,7 @@ namespace tasks {
                 //Check for an existing internet conection, go back to sleep if one exists (every so often, check for a better connection)
                 for (uint8_t i = 0; i < tryUpgradeCycles; currentNetwork > 0 ? i ++ : i) {
                     if (!checkInternetConnection()) {
-                        log_v("Unable to connect to the internet");
+                        LOGI("Unable to connect to the internet");
                         hasNetwork = false;
                         hasInternet = false;
                         delete network;
@@ -233,21 +239,21 @@ namespace tasks {
                         break;
                     }
                     hasInternet = true;
-                    log_v("Connected to the internet");
+                    LOGI("Connected to the internet");
                     delay(checkConnectionRate);
                 }
                 //Try to connect to a network (if we're already connected, only check networks of higher priority)
                 if (tryConnections()) {
                     if (hasNetwork) {
-                        log_v("Upgrade network connection type to index %u: %u", currentNetwork, priorities[currentNetwork]);
+                        LOGI("Upgrade network connection type to index %u: %u", currentNetwork, priorities[currentNetwork]);
                     } else {
-                        log_v("Network connected at index %u: %u", currentNetwork, priorities[currentNetwork]);
+                        LOGI("Network connected at index %u: %u", currentNetwork, priorities[currentNetwork]);
                     }
                 } else {
                     if (hasNetwork) {
-                        log_v("Could not upgrade to higher priority connection");
+                        LOGI("Could not upgrade to higher priority connection");
                     } else {
-                        log_v("Could not find network connection");
+                        LOGI("Could not find network connection");
                         xEventGroupClearBits(taskHandles.flags, tasks::FLAG_HAS_NETWORK | tasks::FLAG_NETWORK_IS_WIFI | tasks::FLAG_NETWORK_IS_SIM | tasks::FLAG_NETWORK_IS_BT);
                         delay(noConnectionRate);
                     }
@@ -267,28 +273,19 @@ namespace tasks {
                     break;
                 case sys::net::NETWORK_SIM:
                     //TODO: Impelement SimClient
-                    log_v("Now connected via cell network");
+                    LOGI("Now connected via cell network");
                     xEventGroupSetBits(taskHandles.flags, tasks::FLAG_HAS_NETWORK | tasks::FLAG_NETWORK_IS_SIM);
                     break;
                 case sys::net::NETWORK_BT:
                     //TODO: Implement BluetoothClient
-                    log_v("Now connected via Bluetooth");
+                    LOGI("Now connected via Bluetooth");
                     xEventGroupSetBits(taskHandles.flags, tasks::FLAG_HAS_NETWORK | tasks::FLAG_NETWORK_IS_BT);
                     break;
                 default:
-                    log_e("Claim to have connect to an invalid network type");
+                    LOGE("Claim to have connect to an invalid network type");
                 }
             }
         }
-
-        //TODO: Make this a static member of the class, make the constructor private so that this is the only thing that can instatiate the task
-        // void task(void * param) {
-        //     log_v("Starting Network Task");
-        //     NetworkTask t;
-        //     while (!NetworkTask::deleteSelfWhenDone)
-        //         t.run();
-        //     vTaskDelete(NULL);
-        // }
 
     }
 }

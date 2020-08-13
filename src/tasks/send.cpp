@@ -2,6 +2,10 @@
  * Task to send JSON telemetry strings to ABRP
  */
 
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_DEBUG
+#define LOG_LOCAL_NAME "send t"
+#include "log.h"
+
 #include "freematics.h"
 #include <Client.h>
 
@@ -10,6 +14,8 @@
 #include "system/network.h"
 #include "abrp/params.h"
 #include "configs.h"
+
+
 
 namespace tasks {
     namespace send {
@@ -36,35 +42,35 @@ namespace tasks {
                 switch (state) {
                 case STATE_INIT:
                     if (!doInit()) {
-                        log_v("Sender task failed to init");
-                        delay(1000);
+                        LOGW("Sender task failed to init");
+                        delay(2500);
                         break;
                     }
                     state = STATE_NO_NETWORK;
                     break;
                 case STATE_NO_NETWORK:
                     if (!getNetworkConnection()) {
-                        log_v("Could not find network connection");
+                        LOGI("Could not find network connection");
                         if (failures ++ >= 2)
                             state = STATE_WAITING_FOR_DATA;
-                        delay(1000);
+                        delay(2500);
                         break;
                     }
                     state = STATE_WAITING_FOR_DATA;
                     break;
                 case STATE_WAITING_FOR_DATA:
                     if (checkForNetworkConnection()) {
-                        log_v("Have network connection");
+                        LOGD("Have network connection");
                         if (getTelemInBuffer() || waitForTelemInQueue()) {
-                            log_v("Have data to send");
+                            LOGD("Have data to send");
                             state = STATE_DATA_TO_SEND;
                         }
                     } else {
                         if (waitForTelemInQueue()) {
-                            log_v("Don't have network connection, save data to buffer first");
+                            LOGD("Don't have network connection, save data to buffer first");
                             state = STATE_DATA_TO_BUFFER;
                         } else {
-                            log_v("Don't have network connection");
+                            LOGD("Don't have network connection");
                             state = STATE_NO_NETWORK;
                         }
                     }
@@ -72,33 +78,33 @@ namespace tasks {
                     break;
                 case STATE_DATA_TO_BUFFER:
                     if (!saveTelemToBuffer()) {
-                        log_v("Failed to save data to buffer!");
+                        LOGE("Failed to save data to buffer!");
                         if (failures ++ >= 4)
                             state = STATE_NO_NETWORK;
-                        delay(1000);
+                        delay(2500);
                         break;
                     }
                     state = STATE_WAITING_FOR_DATA;
                     break;
                 case STATE_DATA_TO_SEND:
                     if (!sendTelemToServer()) {
-                        log_v("Failed to send data to server!");
+                        LOGE("Failed to send data to server!");
                         if (failures ++ >= 4)
                             state = STATE_NO_NETWORK;
-                        delay(1000);
+                        delay(2500);
                         break;
                     }
                     state = STATE_WAITING_FOR_DATA;
                     break;
                 default:
-                    log_v("Invalid state!!!");
-                    delay(1000);
+                    LOGW("Invalid state!!!");
+                    delay(2500);
                 }
             }
         }
 
         bool SenderTask::doInit() {
-            log_v("Initializing HTTP client parameters");
+            LOGD("Initializing HTTP client parameters");
             char url[50], authkey[50];
             strcpy(url, abrp::params::PROTOCOL);
             strcat(url, abrp::params::HOST);
@@ -112,32 +118,34 @@ namespace tasks {
         }
 
         bool SenderTask::getNetworkConnection() {
-            log_v("Getting network connection");
+            LOGD("Getting network connection");
             if (network)
-                log_e("Network should already be deleted to avoid memory leaks!");
+                LOGE("Network should already be deleted to avoid memory leaks!");
             EventBits_t bits = xEventGroupGetBits(flags);
-            if (!(bits & FLAG_HAS_NETWORK))
+            if (!(bits & FLAG_HAS_NETWORK)) {
+                LOGD("No network connection");
                 return false;
+            }
             if (bits & FLAG_NETWORK_IS_WIFI) {
-                log_v("WiFi connection available");
+                LOGD("WiFi connection available");
                 network = new sys::net::wifi::Client;
                 if (http.configure(network)) {
                     type = FLAG_NETWORK_IS_WIFI;
                     return true;
                 }
             } else if (bits & FLAG_NETWORK_IS_SIM || bits & FLAG_NETWORK_IS_BT) {
-                log_v("Non-wifi network clients not yet implemented");
+                LOGD("Non-wifi network clients not yet implemented");
                 return false;
             }
-            log_v("Inconsistent network flags...");
+            LOGW("Inconsistent network flags...");
             return false;
         }
 
         bool SenderTask::checkForNetworkConnection() {
-            log_v("Checking for network");
+            LOGD("Checking for network");
             EventBits_t bits = xEventGroupGetBits(flags);
-            if (!(bits & FLAG_HAS_NETWORK) || !network->connected() || !network->connect(abrp::params::HOST, 80)) {
-                log_v("No connection available");
+            if (!(bits & FLAG_HAS_NETWORK) || !network || !(network->connected() || network->connect(abrp::params::HOST, 80))) {
+                LOGD("No connection available");
                 http.configure(nullptr);
                 delete network;
                 network = nullptr;
@@ -153,17 +161,17 @@ namespace tasks {
         }
 
         bool SenderTask::waitForTelemInQueue() {
-            log_v("Waiting for item in queue");
-            return xQueueReceive(queue, data, pdMS_TO_TICKS(1000));
+            LOGD("Waiting for item in queue");
+            return xQueueReceive(queue, data, pdMS_TO_TICKS(10000));
         }
 
         bool SenderTask::sendTelemToServer() {
-            log_v("Sending data to server via GET: %s", data);
+            LOGD("Sending data to server via GET: %s", data);
             http.urlParams.set(abrp::params::VAR_TELEM, data);
-            // if (!http.get()) {
-            //     log_v("Sending data failed");
-            //     return false;
-            // }
+            if (!http.get()) {
+                LOGE("Sending data failed");
+                return false;
+            }
             return true;
         }
 
