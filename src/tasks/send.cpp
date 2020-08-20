@@ -2,7 +2,7 @@
  * Task to send JSON telemetry strings to ABRP
  */
 
-#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
 #define LOG_LOCAL_NAME "send t"
 #include "log.h"
 

@@ -1,3 +1,5 @@
+#define LOG_LOCAL_NAME "util"
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_DEBUG
 #include "log.h"
 
 #include "freematics.h"
@@ -80,7 +82,7 @@ namespace util {
     void ptl(bool all) {
         listtaskticks = xTaskGetTickCount();
         listtaskcount = uxTaskGetSystemState(listtaskstatus, 30, NULL);
-        LOGV("Ticks   \tHandle  \tName      \tS\tNo\tBP\tCP\tTime    \tHWM  \tCPU");
+        LOGD("Ticks   \tHandle  \tName      \tS\tNo\tBP\tCP\tTime    \tHWM  \tCPU");
         for (listtaskidx = 0; listtaskidx < listtaskcount; listtaskidx++) {
             if (all || listtaskstatus[listtaskidx].xHandle == taskHandles.taskMain ||
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskObd ||
@@ -88,7 +90,7 @@ namespace util {
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskNet ||
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskInit ||
                 listtaskstatus[listtaskidx].xHandle == taskHandles.taskSend) {
-                LOGV("%8u\t%p\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8u\t%5u\t%2d",
+                LOGD("%8u\t%p\t%-10s\t%1u\t%2u\t%2u\t%2u\t%8u\t%5u\t%2d",
                     listtaskticks,
                     listtaskstatus[listtaskidx].xHandle,
                     listtaskstatus[listtaskidx].pcTaskName,

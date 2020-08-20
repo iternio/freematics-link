@@ -100,7 +100,7 @@
 
 #ifdef CONFIG_USE_CUSTOM_ARDUHAL_FORMAT
 #undef ARDUHAL_LOG_FORMAT
-#define ARDUHAL_LOG_FORMAT(letter, format)  ARDUHAL_LOG_COLOR_ ## letter "[" #letter "](%d) %s: " format ARDUHAL_LOG_RESET_COLOR "\r\n"
+#define ARDUHAL_LOG_FORMAT(letter, format)  ARDUHAL_LOG_COLOR_ ## letter "[" #letter "](%d)  %s: " format ARDUHAL_LOG_RESET_COLOR "\r\n"
 
 #define LOGE( format, ... ) log_e( format, esp_log_timestamp(), LOG_LOCAL_NAME, ##__VA_ARGS__)
 #define LOGW( format, ... ) log_w( format, esp_log_timestamp(), LOG_LOCAL_NAME, ##__VA_ARGS__)

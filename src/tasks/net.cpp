@@ -2,7 +2,7 @@
  * Task to maintain network connections
  */
 
-#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_VERBOSE
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
 #define LOG_LOCAL_NAME "net t"
 #include "log.h"
 
@@ -14,8 +14,6 @@
 #include "configs.h"
 #include "system/network.h"
 
-
-
 //TODO: It's looking more and more like I should directly make use of the ESP wifi driver rather than the
 //Arduino style WiFi wrapper object, due to some of the constraints seen when scanning.  There's likely
 //settings to be configured in the driver that are hidden by the WiFi object...  For now, I seem to have
@@ -23,6 +21,12 @@
 //for quicker scan/connect times and more robust network connection maintenance. This would include setting
 //scans to only search for the target AP, listening directly to WiFi disconnect events, etc. This would prob
 //lend itself to using a true state-machine style code here...
+
+//TODO: New bug discovered.  The last run I did, the net task consistently reported a valid internet connection,
+//but the send task failed to connect.  It appears that the WiFi auth died, but the client in the net task
+//continued to say it was connected.  Need to add a flag for the send task to indicate that the network is missing
+//and ask the net task to reset (also, refactoring the net task as a proper state machine should make for a little
+//more consistent behavior)
 
 namespace tasks {
     namespace net {
@@ -193,7 +197,7 @@ namespace tasks {
         bool NetworkTask::checkInternetConnection() {
             // const char * const testServer = "api.iternio.com";
             // const uint16_t testPort = 80;
-            LOGI("Checking for internet connection");
+            LOGV("Checking for internet connection");
             if (!network) {
                 LOGI("No network to try");
                 return false;
@@ -203,7 +207,7 @@ namespace tasks {
                 return true;
             }
             if (network->connect("api.iternio.com", 80)) {
-                LOGI("Connected to the internet successfully");
+                LOGV("Connected to the internet successfully");
                 return true;
             }
             LOGI("Could not connect to the internet");

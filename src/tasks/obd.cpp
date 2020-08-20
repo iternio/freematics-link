@@ -79,10 +79,10 @@ namespace tasks {
                 obd.getVIN(buffer, sizeof(buffer));
                 LOGI("VIN: %s Voltage: %g", buffer, obd.getVoltage());
                 obd.link->sendCommand("ATH1\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
-                obd.link->sendCommand("AT@1\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
-                obd.link->sendCommand("AT@2\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
-                obd.link->sendCommand("ATCS\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
-                obd.link->sendCommand("ATDP\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
+                // obd.link->sendCommand("AT@1\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
+                // obd.link->sendCommand("AT@2\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
+                // obd.link->sendCommand("ATCS\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
+                // obd.link->sendCommand("ATDP\r", buffer, sizeof(buffer), OBD_TIMEOUT_SHORT);
             }
 
         }

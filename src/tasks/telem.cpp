@@ -30,8 +30,10 @@ namespace tasks {
             state(STATE_INIT),
             obdQueue(taskHandles.queueObd2Telem),
             sendQueue(taskHandles.queueTelem2Send),
+            gpsQueue(taskHandles.queueGps2Telem),
             //telem
             //values
+            //gps
             lastTimeStamp(0),
             currentTimeStamp(0),
             nextTimeStamp(0) {}
@@ -111,8 +113,24 @@ namespace tasks {
             return true;
         }
 
+        bool TelemTask::getGpsFromQueue() {
+            //TODO: right now, we only ever get the most recent GPS fix.  What if we have a backup of OBD?
+            //They're all going to be tagged with the same location right now.  In general, that's probably
+            //not a big deal, as this task is intended to prevent a backup of data in the OBD queue,
+            //so should mostly pull the two contemporaneously.  The sender thread will pull the complete
+            //JSON and handle buffering, so that's where data should back up if there's no internet conection
+            return xQueuePeek(gpsQueue, &gps, 0);
+        }
+
         bool TelemTask::makeTelemJson() {
             telem.utc = values[0].time;
+            if (getGpsFromQueue()) {
+                telem.lat = gps.lat;
+                telem.lon = gps.lng;
+            } else {
+                telem.lat.clear();
+                telem.lon.clear();
+            }
             for (uint8_t i = 0; i < configs::PID_LIST_LENGTH; i ++) {
                 if (values[i].time > telem.utc() || values[i].time < telem.utc()) {
                     LOGW("Timestamp mismatch in telemetry set");

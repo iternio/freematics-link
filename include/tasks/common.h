@@ -27,10 +27,12 @@ namespace tasks {
         TaskHandle_t taskNet;
         TaskHandle_t taskSend;
         TaskHandle_t taskInit;
+        TaskHandle_t taskGps;
 
         //Queue Handles
         QueueHandle_t queueObd2Telem;
         QueueHandle_t queueTelem2Send;
+        QueueHandle_t queueGps2Telem;
 
         //Mutex Handles
         SemaphoreHandle_t mutexLink;
@@ -69,7 +71,7 @@ namespace tasks {
 
     template <class T> void run(void * param = NULL) {
         LOGI("Starting Task: %s", T::name);
-        T t;
+        T t(param);
         while (!T::deleteTaskWhenRunReturns)
             t.run();
         vTaskDelete(NULL);

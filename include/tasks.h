@@ -10,3 +10,4 @@
 #include "tasks/init.h"
 #include "tasks/net.h"
 #include "tasks/send.h"
+#include "tasks/gps.h"

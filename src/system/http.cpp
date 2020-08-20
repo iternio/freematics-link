@@ -184,9 +184,11 @@ namespace sys {
                 request.headers += reqHeaders.params[idx].key + ": " + reqHeaders.params[idx].value + "\r\n";
             request.raw = request.method + ' ' + request.url + ' ' + request.http + "\r\n" + request.headers + "\r\n";
             request.size = request.raw.length();
-            LOGI("Request: (%u B)\n%s", request.size, request.raw.c_str());
+            LOGI("Get %s%s", host.c_str(), request.url.c_str());
+            LOGD("Request: (%u B)\n%s", request.size, request.raw.c_str());
             bool ret = send((unsigned char *)request.raw.c_str(), request.size);
-            LOGI("Response: (%u B)\n%s", response.size, response.raw.c_str());
+            LOGI("Received response %i %s - body: %s", response.code, response.codetext.c_str(), response.body.c_str());
+            LOGD("Response: (%u B)\n%s", response.size, response.raw.c_str());
             LOGV("Details:\nProtocol: %s\nCode: %i %s\nMethod: %s\nUrl: %s\nHeaders:\n%s\nBody:\n%s\n",
                 response.http.c_str(), response.code, response.codetext.c_str(), response.method.c_str(),
                 response.url.c_str(), response.headers.c_str(), response.body.c_str());

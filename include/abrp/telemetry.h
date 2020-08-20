@@ -24,6 +24,7 @@ namespace abrp {
             T operator()() { return value; };
             void operator=(T val) { value = val; has_value = true; };
             bool exists() { return has_value; };
+            void clear() { has_value = false; };
         private:
             bool has_value;
             T value;

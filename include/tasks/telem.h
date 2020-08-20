@@ -31,14 +31,17 @@ namespace tasks {
             bool doInit();
             bool waitForObdInQueue();
             bool getObdSetFromQueue();
+            bool getGpsFromQueue();
             bool makeTelemJson();
             bool putTelemInQueue();
 
             TelemTaskState state;
             QueueHandle_t & obdQueue;
             QueueHandle_t & sendQueue;
+            QueueHandle_t & gpsQueue;
             abrp::telemetry::Telemetry telem;
             sys::obd::PIDValue values[configs::PID_LIST_LENGTH];
+            ::GPS_DATA gps;
             time_t lastTimeStamp;
             time_t currentTimeStamp;
             time_t nextTimeStamp;
