@@ -28,7 +28,7 @@ namespace tasks {
     namespace init {
 
         void task(void * param) {
-            ::FreematicsESP32 * system = (::FreematicsESP32 *)param;
+            ::Freematics * system = (::Freematics *)param;
 
             //Perform initial system set up
 #if !CONFIG_AUTOSTART_ARDUINO

@@ -6,6 +6,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <freertos/semphr.h>
+#include "freematics.h"
 
 class FreematicsESP32;
 
@@ -46,6 +48,24 @@ namespace util {
         const char * formula;
         const char * saved;
         const char * data;
+    };
+
+    class MutexLink : public ::CLink {
+    public:
+        MutexLink(CLink * l);
+        ~MutexLink();
+        void take();
+        void give();
+        int read();
+        bool send(const char * str);
+        int receive(char * buffer, int bufsize, unsigned int timeout);
+        int sendCommand(const char * cmd, char * buf, int bufsize, unsigned int timeout);
+        explicit operator bool() const;
+
+    private:
+        CLink * link;
+        SemaphoreHandle_t mutex;
+        uint8_t n;
     };
 
 }

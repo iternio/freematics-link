@@ -17,13 +17,25 @@
 namespace sys {
     namespace obd {
 
+        bool OBD::init(OBD_PROTOCOLS protocol) {
+            if (!link) {
+                return false;
+            }
+            ((util::MutexLink *)link)->take();
+            bool ret = COBD::init(protocol);
+            ((util::MutexLink *)link)->give();
+            return ret;
+        }
+
         uint8_t OBD::readPIDRaw(uint8_t mode, uint16_t pid, char * buffer, uint8_t bufsize) {
             sprintf(buffer, (pid > 0xFF ? "%02X%04X\r" : "%02X%02X\r"), mode, pid);
             //TODO: mutex for link usage!
             LOGD("Sending: %s", buffer);
+            ((util::MutexLink *)link)->take();
             link->send(buffer);
             // delay(5); //TODO: This is where the original implementation calls idleTasks(), which seems unecessary here.  Should we delay? It's not clear if receive will block with a delay, or just spin
             int ret = link->receive(buffer, bufsize, OBD_TIMEOUT_SHORT);
+            ((util::MutexLink *)link)->give();
             LOGD("Received: %s", buffer);
             if (ret > 0 && checkErrorMessage(buffer)) {
                 LOGW("Received error message %s", buffer);

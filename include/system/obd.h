@@ -47,6 +47,7 @@ namespace sys {
 
         class OBD : public ::COBD {
         public:
+            bool init(OBD_PROTOCOLS protocol = PROTO_AUTO);
             OBD_STATES state();
             uint8_t readPIDRaw(uint8_t mode, uint16_t pid, char * buffer, uint8_t bufsize);
             uint8_t readPIDRaw(uint16_t pid, char * buffer, uint8_t bufsize);

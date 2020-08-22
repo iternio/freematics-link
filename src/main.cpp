@@ -15,7 +15,8 @@
 
 //TODO: Make sure to properly clean up namespaces (including :: prefix to indicate global ns)
 //Shared Resources (TODO: Should any of these be on a specific thread's stack instead of the global heap?)
-::FreematicsESP32 freematics;
+// ::FreematicsESP32 freematics;
+::Freematics freematics;
 
 void app() {
     LOGI("Application started");

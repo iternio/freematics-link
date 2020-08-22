@@ -21,6 +21,8 @@
 //Also, the hdop value seems to just be an incrementing number, and it's not clear that it
 //is actually a value indicating the precision of the fix.
 
+//TODO: Delete stale fix from queue after a reasonable timeout
+
 namespace tasks {
     namespace gps {
 
@@ -38,7 +40,7 @@ namespace tasks {
             queue(taskHandles.queueGps2Telem),
             flags(taskHandles.flags),
             failures(0),
-            system((::FreematicsESP32 *)p),
+            system((::Freematics *)p),
             data(NULL) {}
 
         void GpsTask::run() {

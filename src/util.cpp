@@ -387,4 +387,62 @@ namespace util {
         return formula - saved;
     }
 
+    MutexLink::MutexLink(CLink * l) :
+        link(l),
+        mutex(xSemaphoreCreateRecursiveMutex()),
+        n(0) {
+        LOGD("Created Mutexed CLink");
+    }
+
+    MutexLink::~MutexLink() {
+        vSemaphoreDelete(mutex);
+        delete link;
+    }
+
+    void MutexLink::take() {
+        //TODO: Should we actually just block forever?  Or should there be a timeout failure mechanism?
+        LOGV("Taking (%p) - %u", xTaskGetCurrentTaskHandle(), n);
+        xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
+        LOGV("Taken (%p) - %u", xTaskGetCurrentTaskHandle(), ++n);
+    }
+
+    void MutexLink::give() {
+        LOGV("Giving (%p) - %u", xTaskGetCurrentTaskHandle(), n);
+        xSemaphoreGiveRecursive(mutex);
+        LOGV("Given (%p) - %u", xTaskGetCurrentTaskHandle(), --n);
+    }
+
+    int MutexLink::read() {
+        take();
+        int ret = link->read();
+        give();
+        return ret;
+    }
+
+    bool MutexLink::send(const char * str) {
+        take();
+        bool ret = link->send(str);
+        give();
+        return ret;
+    }
+
+    int MutexLink::receive(char * buffer, int bufsize, unsigned int timeout) {
+        take();
+        int ret = link->receive(buffer, bufsize, timeout);
+        give();
+        return ret;
+    }
+
+    int MutexLink::sendCommand(const char * cmd, char * buf, int bufsize, unsigned int timeout) {
+        take();
+        int ret = link->sendCommand(cmd, buf, bufsize, timeout);
+        give();
+        return ret;
+    }
+
+    MutexLink::operator bool() const {
+        return (bool)link;
+    }
+
+
 }
