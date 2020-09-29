@@ -43,6 +43,7 @@ namespace tasks {
             system((::Freematics *)p),
             data(NULL) {}
 
+        //TODO: Set clock once GPS has view of satellites
         void GpsTask::run() {
             while (true) {
                 switch (state) {

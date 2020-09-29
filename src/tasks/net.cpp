@@ -2,7 +2,7 @@
  * Task to maintain network connections
  */
 
-#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_INFO
+#define LOG_LOCAL_LEVEL ARDUHAL_LOG_LEVEL_DEBUG
 #define LOG_LOCAL_NAME "net t"
 #include "log.h"
 
@@ -44,14 +44,14 @@ namespace tasks {
         //and if, when searching, any one is found, just connect to it, and don't search for a new one until that one is lost...
         //Also, might be good to subscribe to some sort of system events to detect loss of wifi rather than just pinging every so often
         //Perhaps also possible to disable the auto reconnect feature so we can manage it more directly here?  Or just use esp wifi API direclty?
-        const sys::net::NetworkPriorities NetworkTask::priorities[] = {/* sys::net::NETWORK_WIFI,  */sys::net::NETWORK_WIFI_SECONDARY, sys::net::NETWORK_SIM};
+        const sys::net::NetworkPriorities NetworkTask::priorities[] = {/* sys::net::NETWORK_WIFI, sys::net::NETWORK_WIFI_SECONDARY, */sys::net::NETWORK_SIM};
         const uint8_t NetworkTask::numPriorities = sizeof(NetworkTask::priorities) / sizeof(sys::net::NetworkPriorities);
         const uint32_t NetworkTask::checkConnectionRate = 30000;
         const uint32_t NetworkTask::noConnectionRate = 10000;
         const uint8_t NetworkTask::tryUpgradeCycles = 4;
         // const bool NetworkTask::deleteSelfWhenDone = false;
 
-        NetworkTask::NetworkTask(void * p) : Task(p), network(NULL), hasNetwork(false), currentNetwork(UINT8_MAX), hasInternet(false) {}
+        NetworkTask::NetworkTask(void * p) : Task(p), network(NULL), hasNetwork(false), currentNetwork(UINT8_MAX), hasInternet(false), system((::Freematics *)p) {}
 
         bool NetworkTask::findWiFiNetwork(const char * const ssid) {
             LOGV("A %u %u", WiFi.status(), WiFi.isConnected());
@@ -147,8 +147,49 @@ namespace tasks {
         }
 
         bool NetworkTask::connectToCellNetwork() {
-            LOGE("Cell connection not implemented");
-            return false;
+            LOGD("Connecting to cell network");
+            if (!Sim.isConnected()) {
+                LOGD("No existing connection");
+                if (!strlen(Sim.getDeviceName()) || !Sim.getOperator()) {
+                    LOGD("Starting cell connection");
+                    Sim.begin();
+                }
+                if (!Sim.checkSim()) {
+                    LOGW("Valid SIM card not present");
+                    return false;
+                }
+                char op[128];
+                Sim.getSimProvider(op);
+                LOGD("%s SIM card inserted", op);
+                Sim.scanOperators();
+                LOGD("Waiting for network");
+                if (!Sim.waitForNetwork(600000, 2000)) {
+                    LOGD("No network");
+                    return false;
+                }
+                Sim.getOperator(op);
+                LOGD("Connected to network %s", op);
+                if (!Sim.getIP()) {
+                    LOGD("Connecting to internet");
+                    if (!Sim.connect()) {
+                        LOGW("Failed to connect to internet");
+                        return false;
+                    }
+                }
+                LOGD("Waiting for IP");
+                if (!Sim.waitForConnection(300000, 2000)) {
+                    LOGD("No internet connection");
+                    return false;
+                }
+                if (!Sim.isConnected()) {
+                    LOGD("Failed to connect");
+                    return false;
+                }
+            }
+            LOGD("Connected to cell network");
+            LOGD("IP: %s", Sim.getIP().toString().c_str());
+            LOGD("DNS query for api.iternio.com: %s", Sim.queryDns("api.iternio.com").toString().c_str());
+            return true;
         }
 
         bool NetworkTask::connectToBluetoothDevice() {
@@ -229,7 +270,8 @@ namespace tasks {
             WiFi.setAutoReconnect(false);   //TODO: This isn't ideal, but it's the best workaround so far to prevent the CPU panics that happen when
                                             //scanning while reconnecting.  Maybe better to bypass the WiFi object and directly use the low level API?
                                             //There's probably a lot lost by going this route, tho...
-
+            Sim.setSystem(system);
+            LOGD("System pointer: %p", system);
 
             while (true) {
                 //Check for an existing internet conection, go back to sleep if one exists (every so often, check for a better connection)
@@ -276,9 +318,10 @@ namespace tasks {
                     xEventGroupSetBits(taskHandles.flags, tasks::FLAG_HAS_NETWORK | tasks::FLAG_NETWORK_IS_WIFI);
                     break;
                 case sys::net::NETWORK_SIM:
-                    //TODO: Impelement SimClient
+                    network = new sys::net::sim::Client;
                     LOGI("Now connected via cell network");
                     xEventGroupSetBits(taskHandles.flags, tasks::FLAG_HAS_NETWORK | tasks::FLAG_NETWORK_IS_SIM);
+                    delay(600000);
                     break;
                 case sys::net::NETWORK_BT:
                     //TODO: Implement BluetoothClient
@@ -286,7 +329,7 @@ namespace tasks {
                     xEventGroupSetBits(taskHandles.flags, tasks::FLAG_HAS_NETWORK | tasks::FLAG_NETWORK_IS_BT);
                     break;
                 default:
-                    LOGE("Claim to have connect to an invalid network type");
+                    LOGE("Claim to have connection to an invalid network type");
                 }
             }
         }

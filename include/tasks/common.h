@@ -47,7 +47,11 @@ namespace tasks {
         FLAG_HAS_NETWORK        = bit(0),
         FLAG_NETWORK_IS_WIFI    = bit(1),
         FLAG_NETWORK_IS_SIM     = bit(2),
-        FLAG_NETWORK_IS_BT      = bit(3)
+        FLAG_NETWORK_IS_BT      = bit(3),
+        FLAG_TIME_SET           = bit(4),
+        FLAG_TIME_SET_BY_SNTP   = bit(5),
+        FLAG_TIME_SET_BY_GPS    = bit(6),
+        FLAG_TIME_SET_BY_SIM    = bit(7)
     };
 
     //TODO: Fill out this class

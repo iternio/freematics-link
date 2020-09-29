@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "freematics.h"
 #include "tasks/common.h"
 #include "system/network.h"
 
@@ -14,7 +15,7 @@ namespace tasks {
 
         class NetworkTask : public Task {
         public:
-            NetworkTask(void * p = NULL);
+            NetworkTask(void * p);
             void run();
 
         private:
@@ -29,6 +30,7 @@ namespace tasks {
             bool hasNetwork;
             uint8_t currentNetwork;
             bool hasInternet;
+            Freematics * system;
 
         public:
             static const sys::net::NetworkPriorities priorities[];

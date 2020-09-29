@@ -22,7 +22,7 @@ namespace tasks {
 
         class GpsTask : public Task {
         public:
-            GpsTask(void * p = NULL);
+            GpsTask(void * p);
             void run();
 
         private:
@@ -36,7 +36,7 @@ namespace tasks {
             QueueHandle_t & queue;
             EventGroupHandle_t & flags;
             uint8_t failures;
-            ::FreematicsESP32 * system;
+            ::Freematics * system;
             GPS_DATA * data;
 
 

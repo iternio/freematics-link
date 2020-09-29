@@ -92,12 +92,17 @@ namespace tasks {
             sntp_setservername(0, (char*)"pool.ntp.org");
             sntp_init();
             delay(500);
-            while (time(nullptr) < (2020 - 1970) * 365 * 24 * 3600)
+            for (uint8_t n = 0; n < 60 && time(nullptr) < (2020 - 1970) * 365 * 24 * 3600; n ++)
                 delay(1000);
-            time(&now);
-            nowtm = gmtime(&now);
-            strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
-            LOGI("System time updated to: %s", buf);
+            if (time(nullptr) > (2020 - 1970) * 365 * 24 * 3600) {
+                xEventGroupSetBits(taskHandles.flags, FLAG_TIME_SET & FLAG_TIME_SET_BY_SNTP);
+                time(&now);
+                nowtm = gmtime(&now);
+                strftime(buf, 35, "%a, %d %b %Y %H:%M:%S GMT", nowtm);
+                LOGI("System time updated to: %s", buf);
+            } else {
+                LOGW("SNTP failed to get current time");
+            }
 
             //Notify main task that time is set and it can proceed
             xTaskNotifyGive(taskHandles.taskMain);

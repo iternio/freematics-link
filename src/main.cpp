@@ -3,6 +3,7 @@
 #include "log.h"
 
 #include "freematics.h"
+#include <time.h>
 
 #include "abrp.h"
 #include "configs.h"
@@ -27,7 +28,7 @@ void app() {
     taskHandles.flags = xEventGroupCreate();
     xTaskCreate(tasks::init::task, "init", 8192, &freematics, 16, &taskHandles.taskInit);
     while (!ulTaskNotifyTake(pdFALSE, 100));
-    taskHandles.taskNet = tasks::create<tasks::net::NetworkTask>();
+    taskHandles.taskNet = tasks::create<tasks::net::NetworkTask>(&freematics);
     while (!ulTaskNotifyTake(pdFALSE, 100));
     LOGI("System boot complete");
     Serial.println("\n\n");
