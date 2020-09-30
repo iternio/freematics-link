@@ -1,4 +1,3 @@
-Why the Internet Hates Nestlé
 /*
  * Classes & functions to wrap Freematics OBD reading
  */
@@ -111,7 +110,6 @@ namespace sys {
         inline const uint8_t & PID_LIST_KIA_NIRO_LENGTH = PID_LIST_HYUNDAI_KONA_LENGTH;
         inline const char PID_LIST_KIA_NIRO_NAME[] = "Kia Niro";
 
-
         inline const PID PID_LIST_CHEVROLET_BOLT[] = {
             {0x22, 0x41A3,  0x7E4,  "capacity",         "kWh",       "{us:1:2}/30.0"},
             {0x22, 0x8334,  0x7E4,  "soc",              "%",         "{1}*100.0/255.0"},
@@ -122,8 +120,8 @@ namespace sys {
             {0x22, 0x436C,  0x7E4,  "is_charging",      "",          "{s:1:2}/20.0"},
             {0x22, 0x801E,  0x7E4,  "ext_temp",         "\xB0""C",   "({1}/2)-40.0"},
             {0x22, 0x434F,  0x7E4,  "batt_temp",        "\xB0""C",   "{1}-40.0"},
-            {0x22, 0x2889,  0x7E1,  "prndl",            "",   "{1}"}, // 8=P, 3=D, 7=R, 6=N, 1=L
-            {0x22, 0x4369,  0x7E4,  "ac_current",       "",   "{1}"}, // AC current.  If AC Current is 0, then it could be a DCFC
+            {0x22, 0x2889,  0x7E1,  "prndl",            "",          "{1}"}, // 8=P, 3=D, 7=R, 6=N, 1=L TODO: Guess I need to add a way to parse an enum value and encode it in the equation, can't currently do that!
+            {0x22, 0x4369,  0x7E4,  "ac_current",       "",          "{1}"}, // AC current.  If AC Current is 0, then it could be a DCFC.  TODO: Equation will eventually support booleans like ==, >, <, etc.  Framework's there, just need to add it
         };
         inline const uint8_t PID_LIST_CHEVROLET_BOLT_LENGTH = sizeof(PID_LIST_CHEVROLET_BOLT) / sizeof(PID);
         inline const char PID_LIST_CHEVROLET_BOLT_NAME[] = "Chevrolet Bolt";
