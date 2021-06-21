@@ -13,7 +13,7 @@ namespace configs {
 
     inline const char SIM_APN[] = "----------";
 
-    inline const char APIKEY[] = "------------------------------------";
+    inline const char APIKEY[] = "2d6d1a67-d3c6-4c74-8639-fde79c4ca3a6";
     inline const char TOKEN[] = "------------------------------------";
 
 }
